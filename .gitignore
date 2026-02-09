@@ -44,6 +44,10 @@ next-env.d.ts
 
 # playwright cli
 .playwright-cli/
+# playwright test
+test-results/
+playwright-report/
+playwright/.cache/
 
 # railway-service
 railway-service/dist/

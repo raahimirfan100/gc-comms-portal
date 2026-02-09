@@ -571,31 +571,9 @@ Calculates the volunteer capacity for a duty given a daig count. Used during dri
 - **`update_drive_duty_assigned_count`** — Fires after INSERT/UPDATE/DELETE on `assignments`. Recalculates `drive_duties.current_assigned` count for the affected drive+duty combination.
 - **`moddatetime` triggers** — On most tables, automatically updates the `updated_at` timestamp on row modification (via the `moddatetime` extension).
 
-### Migrations
+### Schema source
 
-The schema is managed via 19 Supabase migrations, applied in order:
-
-| # | Version | Name | Description |
-|---|---------|------|-------------|
-| 1 | 20260208233258 | `enable_extensions` | Enable required Postgres extensions (moddatetime, etc.) |
-| 2 | 20260208233305 | `create_enums` | Create all 7 enum types |
-| 3 | 20260208233312 | `create_seasons_table` | Seasons table with Hijri year |
-| 4 | 20260208233320 | `create_volunteers_table` | Volunteers with phone, gender, source |
-| 5 | 20260208233327 | `create_drives_table` | Drives with sunset time, daig count, status |
-| 6 | 20260208233332 | `create_duties_table` | Duty types with gender restrictions |
-| 7 | 20260208233339 | `create_drive_duties_table` | Per-drive duty slots with capacity |
-| 8 | 20260208233346 | `create_duty_capacity_rules_table` | Linear and tiered capacity formulas |
-| 9 | 20260208233352 | `create_volunteer_availability_table` | Drive sign-ups |
-| 10 | 20260208233400 | `create_assignments_table` | Volunteer-to-duty mappings |
-| 11 | 20260208233408 | `create_communication_log_table` | Message and call history |
-| 12 | 20260208233414 | `create_whatsapp_sessions_table` | WhatsApp connection state |
-| 13 | 20260208233420 | `create_app_config_table` | Key-value application settings |
-| 14 | 20260208233427 | `create_reminder_schedules_table` | Sunset-relative reminders |
-| 15 | 20260208233433 | `create_google_sheets_sync_table` | Sheets sync state |
-| 16 | 20260208233449 | `create_functions_and_triggers` | `calculate_duty_capacity` function + assignment count trigger |
-| 17 | 20260208233502 | `enable_rls_and_policies` | Row Level Security policies on all tables |
-| 18 | 20260208233508 | `enable_realtime` | Enable Supabase Realtime on `assignments` table |
-| 19 | 20260208233540 | `seed_default_data_fixed` | Seed default duties, capacity rules, and app_config entries |
+The schema is defined in **`supabase/full_schema.sql`**. Apply it in the Supabase dashboard (SQL Editor) or via the Supabase CLI. It includes extensions, enums, tables, functions, triggers, RLS policies, Realtime, and seed data (default duties, capacity rules, app_config).
 
 ---
 
@@ -1069,7 +1047,7 @@ RAILWAY_API_SECRET=any_shared_secret_you_choose
 
 ### Step 3: Verify Database
 
-The database schema should already be set up via migrations. Verify by checking the Supabase Table Editor — you should see 13 tables. If migrations haven't been applied, they can be applied through the Supabase MCP tools or the Supabase CLI.
+The database schema should already be set up (e.g. from `supabase/full_schema.sql` in the Supabase SQL Editor). Verify by checking the Supabase Table Editor — you should see 13 tables.
 
 ### Step 4: Create Admin Account
 
@@ -1083,7 +1061,7 @@ The database schema should already be set up via migrations. Verify by checking 
 Once logged in, follow this sequence:
 
 1. **Create a Season** — Go to Settings > General and create a Ramadan season (e.g., "Ramadan 1447", start/end dates, Hijri year). Mark it as active.
-2. **Verify Duties** — Go to Duties and confirm the default duties exist (Provider, Dari, Thaal, Traffic, Sherbet, Daig). These are seeded by the `seed_default_data_fixed` migration.
+2. **Verify Duties** — Go to Duties and confirm the default duties exist (Provider, Dari, Thaal, Traffic, Sherbet, Daig). These are included in the seed data in `supabase/full_schema.sql`.
 3. **Create a Drive** — Go to Drives > New Drive. Enter a date, location, and daig count. The sunset time will auto-fetch from the Aladhan API.
 4. **Add Volunteers** — Either add manually via Volunteers > New, or have volunteers sign up via the public form at `/volunteer/register`.
 5. **Assign Volunteers** — Go to the drive's Assignments page. Use "Auto-Assign All" to batch-assign, or drag-and-drop on the Kanban board.
@@ -1504,7 +1482,7 @@ Alert and notification thresholds.
 
 ### Add a New Duty
 
-1. Insert into the `duties` table via Supabase dashboard or a migration:
+1. Insert into the `duties` table via the Supabase dashboard (SQL Editor):
    ```sql
    INSERT INTO duties (name, slug, display_order, gender_restriction, is_active)
    VALUES ('My Duty', 'my-duty', 7, null, true);
