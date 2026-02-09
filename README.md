@@ -1,109 +1,171 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# Grand Citizens — Iftaar Drive Management
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+Volunteer coordination platform for organizing Ramadan iftaar feeding drives in Karachi, Pakistan.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+![Next.js](https://img.shields.io/badge/Next.js_16-black?logo=next.js)
+![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
+![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-000000?logo=shadcnui&logoColor=white)
+
+## Overview
+
+Grand Citizens runs large-scale iftaar feeding drives during Ramadan, requiring coordination of hundreds of volunteers across multiple events. This system manages the full lifecycle — creating drives with auto-fetched sunset times, assigning volunteers to duties via an auto-assignment algorithm, confirming attendance through AI phone calls (Urdu-language) and WhatsApp messaging, and monitoring everything in real time on drive day.
 
 ## Features
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+### Drive Management
+- Create drives with auto-fetched sunset/iftaar times (Aladhan API)
+- Status lifecycle: draft → open → in_progress → completed
+- Capacity planning per duty based on daig count (linear or tiered rules)
 
-## Demo
+### Volunteer Registry
+- Searchable directory with gender filtering and attendance history
+- Bulk import from Google Sheets
+- Public registration form for volunteer sign-ups
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+### Duty Board
+- Drag-and-drop Kanban assignment interface (dnd-kit)
+- Auto-assignment algorithm respecting gender restrictions and capacity limits
+- Waitlist management with automatic promotion
 
-## Deploy to Vercel
+### Live Dashboard
+- Real-time volunteer status monitoring via Supabase Realtime
+- Check-in tracking (en route, arrived, completed, no-show)
+- Deficit alerts when duties are understaffed
 
-Vercel deployment will guide you through creating a Supabase account and project.
+### AI Calling
+- Retell AI integration for Urdu-language confirmation calls
+- Batch call operations for entire drives
+- Call result tracking with transcripts logged to communication history
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+### WhatsApp Integration
+- Baileys-based WhatsApp messaging via Railway background service
+- Keyword detection for confirm/cancel responses
+- QR code authentication flow
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+### Reminders
+- Scheduled reminders tied to sunset time offsets
+- Configurable message templates
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+### Analytics
+- Volunteer attendance charts and drive metrics via Recharts
+- Leaderboards
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+### Multi-Season Support
+- All data scoped by Ramadan season (Hijri year)
+- Season switching for historical comparison
 
-## Clone and run locally
+## Tech Stack
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+| Category | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript (strict) |
+| Database & Auth | Supabase (Postgres, Auth, Realtime) |
+| Styling | Tailwind CSS |
+| Components | shadcn/ui (New York style) + Radix UI |
+| Icons | Lucide React |
+| Charts | Recharts |
+| Drag & Drop | dnd-kit |
+| Date Handling | date-fns |
+| Notifications | Sonner |
+| Theme | next-themes (light/dark/system) |
+| Font | Geist Sans |
+| Background Service | Railway (Express + Baileys + Google APIs) |
 
-2. Create a Next.js app using the Supabase Starter template npx command
+## Project Structure
 
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
+```
+app/
+  (dashboard)/            # Protected dashboard routes
+    drives/               # Drive CRUD, assignments, call center, live dashboard
+    volunteers/           # Volunteer registry, profiles, bulk import
+    duties/               # Duty type configuration and capacity rules
+    analytics/            # Charts and leaderboards
+    settings/             # General, assignment, calling, reminders, WhatsApp, sheets, alerts
+  api/                    # REST endpoints (batch assignments, call triggers, webhooks)
+  auth/                   # Authentication pages (login, signup, forgot password)
+  volunteer/              # Public registration form
+components/
+  ui/                     # shadcn/ui primitives (30+ components)
+  dashboard/              # Sidebar, Topbar
+lib/
+  supabase/               # Client, server, admin, proxy, generated types
+  assignment/             # Auto-assignment algorithm (single, batch, waitlist promotion)
+  utils.ts                # Shared utilities (phone normalization, date formatting)
+railway-service/          # Background service (WhatsApp, Google Sheets sync, cron jobs)
+  src/
+    whatsapp/             # Baileys connection & messaging
+    calling/              # Retell AI client
+    sheets/               # Google Sheets sync engine
+    cron/                 # Scheduled jobs (reminders, syncs)
+```
 
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
+## Getting Started
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+### Prerequisites
 
-3. Use `cd` to change into the app's directory
+- Node.js 18+
+- npm
+- A [Supabase](https://supabase.com) project
 
-   ```bash
-   cd with-supabase-app
-   ```
+### Installation
 
-4. Rename `.env.example` to `.env.local` and update the following:
+```bash
+git clone <repository-url>
+cd next-comms-portal
+npm install
+```
 
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+Copy the environment file and fill in your values:
 
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+```bash
+cp .env.example .env.local
+```
 
-5. You can now run the Next.js local development server:
+### Environment Variables
 
-   ```bash
-   npm run dev
-   ```
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable (anon) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
+| `RAILWAY_SERVICE_URL` | URL of the Railway background service |
+| `RAILWAY_API_SECRET` | Shared secret for authenticating Railway API calls |
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+### Development
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+```bash
+npm run dev
+```
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Feedback and issues
+## Database Schema
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+The schema is managed via Supabase migrations. Core tables:
 
-## More Supabase examples
+| Table | Purpose |
+|---|---|
+| `seasons` | Ramadan seasons scoped by Hijri year |
+| `drives` | Iftaar drive events with date, location, sunset times, and status |
+| `volunteers` | Volunteer profiles with contact info, gender, and engagement tracking |
+| `duties` | Duty types (provider, dari, thaal, traffic, etc.) with gender restrictions |
+| `drive_duties` | Duty slots per drive with capacity (calculated or manual override) |
+| `duty_capacity_rules` | Capacity formulas (linear/tiered) based on daig count |
+| `assignments` | Volunteer-to-duty mappings with status tracking and waitlist position |
+| `volunteer_availability` | Drive sign-ups from volunteers |
+| `communication_log` | All outbound messages (WhatsApp, AI calls) with delivery status and transcripts |
+| `reminder_schedules` | Scheduled reminders relative to sunset times |
+| `whatsapp_sessions` | WhatsApp connection state and QR codes |
+| `google_sheets_sync` | Google Sheets sync state and error history |
+| `app_config` | Key-value application settings |
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+## Key Architecture Decisions
+
+- **App Router with grouped layouts** — `(dashboard)` group for authenticated routes with sidebar/topbar, separate layouts for auth and public pages
+- **Server Components by default** — Client Components used only where interactivity is required (forms, drag-and-drop, real-time subscriptions)
+- **Supabase Realtime for live updates** — no polling; the live dashboard subscribes to assignment status changes
+- **Separate Railway microservice** — long-running tasks (WhatsApp connections, scheduled jobs, Google Sheets sync) run outside the Next.js serverless boundary
+- **Pakistan-specific utilities** — phone normalization to +92 format, en-PK date locale, Aladhan API for Karachi sunset times

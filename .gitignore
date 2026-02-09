@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright cli
+.playwright-cli/
+
+# railway-service build output
+railway-service/dist/
