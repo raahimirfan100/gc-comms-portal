@@ -170,7 +170,7 @@ export function setupCronJobs(
           const res = await fetch(
             `https://api.aladhan.com/v1/timings/${day}-${month}-${year}?latitude=24.8607&longitude=67.0011&method=1`,
           );
-          const data = await res.json();
+          const data = await res.json() as { data?: { timings?: { Sunset?: string } } };
           const sunset = data?.data?.timings?.Sunset;
 
           if (sunset) {

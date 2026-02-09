@@ -42,7 +42,7 @@ class RetellProvider implements CallProvider {
       throw new Error(`Retell API error: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { call_id: string };
     return { callId: data.call_id };
   }
 }

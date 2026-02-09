@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -44,5 +45,9 @@ next-env.d.ts
 # playwright cli
 .playwright-cli/
 
-# railway-service build output
+# railway-service
 railway-service/dist/
+railway-service/node_modules/
+
+# editor / AI
+CLAUDE.md
