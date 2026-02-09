@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import { getStatusColor, formatPhone } from "@/lib/utils";
-import { AlertTriangle, Loader2, Radio, Users } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { LiveDashboardSkeleton } from "@/components/skeletons/live-dashboard-skeleton";
+import { formatPhone } from "@/lib/utils";
+import { AlertTriangle, Radio, Users } from "lucide-react";
 
 type AssignmentWithVolunteer = {
   id: string;
@@ -16,6 +17,14 @@ type AssignmentWithVolunteer = {
   duty_id: string;
   volunteers: { name: string; phone: string } | null;
   duties: { name: string } | null;
+};
+
+const STATUS_CARD_COLORS: Record<string, string> = {
+  Total: "hsl(var(--status-assigned-dot))",
+  Confirmed: "hsl(var(--status-confirmed-dot))",
+  "En Route": "hsl(var(--status-en_route-dot))",
+  Arrived: "hsl(var(--status-arrived-dot))",
+  Cancelled: "hsl(var(--status-cancelled-dot))",
 };
 
 export default function LiveDashboardPage() {
@@ -57,7 +66,6 @@ export default function LiveDashboardPage() {
 
     if (data) {
       setAssignments(data as unknown as AssignmentWithVolunteer[]);
-      // Check deficit
       const total = data.length;
       const problematic = data.filter(
         (a) =>
@@ -82,12 +90,16 @@ export default function LiveDashboardPage() {
   const cancelled = statusCounts["cancelled"] || 0;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+    return <LiveDashboardSkeleton />;
   }
+
+  const stats = [
+    { label: "Total", value: total },
+    { label: "Confirmed", value: confirmed },
+    { label: "En Route", value: enRoute },
+    { label: "Arrived", value: arrived },
+    { label: "Cancelled", value: cancelled },
+  ];
 
   return (
     <div className="space-y-6">
@@ -97,7 +109,7 @@ export default function LiveDashboardPage() {
       </div>
 
       {deficitAlert && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="border-l-4 border-l-destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Volunteer Deficit Alert</AlertTitle>
           <AlertDescription>
@@ -108,19 +120,17 @@ export default function LiveDashboardPage() {
       )}
 
       <div className="grid gap-4 md:grid-cols-5">
-        {[
-          { label: "Total", value: total, color: "bg-blue-500" },
-          { label: "Confirmed", value: confirmed, color: "bg-green-500" },
-          { label: "En Route", value: enRoute, color: "bg-yellow-500" },
-          { label: "Arrived", value: arrived, color: "bg-emerald-500" },
-          { label: "Cancelled", value: cancelled, color: "bg-red-500" },
-        ].map((stat) => (
-          <Card key={stat.label}>
+        {stats.map((stat) => (
+          <Card key={stat.label} className="overflow-hidden">
+            <div
+              className="h-1"
+              style={{ backgroundColor: STATUS_CARD_COLORS[stat.label] }}
+            />
             <CardContent className="pt-6 text-center">
-              <div
-                className={`mx-auto mb-2 h-2 w-8 rounded-full ${stat.color}`}
+              <AnimatedCounter
+                value={stat.value}
+                className="text-2xl font-bold"
               />
-              <p className="text-2xl font-bold">{stat.value}</p>
               <p className="text-sm text-muted-foreground">{stat.label}</p>
             </CardContent>
           </Card>
@@ -139,7 +149,7 @@ export default function LiveDashboardPage() {
             {assignments.map((a) => (
               <div
                 key={a.id}
-                className="flex items-center justify-between rounded-md border p-3"
+                className="flex items-center justify-between rounded-md border p-3 hover:bg-muted/50 transition-colors"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-sm">
@@ -149,9 +159,7 @@ export default function LiveDashboardPage() {
                     {a.duties?.name}
                   </p>
                 </div>
-                <Badge className={`ml-2 shrink-0 ${getStatusColor(a.status)}`}>
-                  {a.status.replace("_", " ")}
-                </Badge>
+                <StatusBadge status={a.status} className="ml-2 shrink-0" />
               </div>
             ))}
           </div>

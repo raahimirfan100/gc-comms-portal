@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { DutyBoardSkeleton } from "@/components/skeletons/duty-board-skeleton";
 import {
   Card,
   CardContent,
@@ -19,6 +21,7 @@ import {
   RefreshCw,
   Users,
   GripVertical,
+  Inbox,
 } from "lucide-react";
 import {
   DndContext,
@@ -36,7 +39,14 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { getStatusColor } from "@/lib/utils";
+
+const COLUMN_COLORS = [
+  "hsl(37, 93%, 48%)",
+  "hsl(158, 64%, 36%)",
+  "hsl(24, 80%, 50%)",
+  "hsl(200, 70%, 45%)",
+  "hsl(340, 65%, 50%)",
+];
 
 type Assignment = {
   id: string;
@@ -57,6 +67,15 @@ type DriveDuty = {
   duties: { name: string; slug: string; gender_restriction: string | null } | null;
 };
 
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 function VolunteerCard({
   assignment,
   isDragging,
@@ -70,26 +89,28 @@ function VolunteerCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
+    scale: isDragging ? "0.95" : "1",
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm"
+      className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm transition-all"
     >
-      <button {...attributes} {...listeners} className="cursor-grab">
+      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
         <GripVertical className="h-3 w-3 text-muted-foreground" />
       </button>
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+        {assignment.volunteers?.name ? getInitials(assignment.volunteers.name) : "?"}
+      </div>
       <div className="flex-1 min-w-0">
         <div className="truncate font-medium">
           {assignment.volunteers?.name}
         </div>
         <div className="flex items-center gap-1">
-          <Badge className={`text-[10px] px-1 py-0 ${getStatusColor(assignment.status)}`}>
-            {assignment.status.replace("_", " ")}
-          </Badge>
+          <StatusBadge status={assignment.status} className="text-[10px] px-1.5 py-0" />
           {assignment.is_manual_override && (
             <Badge variant="outline" className="text-[10px] px-1 py-0">
               manual
@@ -117,7 +138,6 @@ export default function AssignmentsPage() {
   useEffect(() => {
     loadData();
 
-    // Realtime subscription
     const channel = supabase
       .channel("assignments-realtime")
       .on(
@@ -187,11 +207,9 @@ export default function AssignmentsPage() {
     const assignment = assignments.find((a) => a.id === assignmentId);
     if (!assignment) return;
 
-    // The over target is a duty column droppable area
     const targetDutyId = over.id as string;
     if (assignment.duty_id === targetDutyId) return;
 
-    // Update assignment to new duty
     const { error } = await supabase
       .from("assignments")
       .update({
@@ -215,11 +233,7 @@ export default function AssignmentsPage() {
     : null;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+    return <DutyBoardSkeleton />;
   }
 
   return (
@@ -233,7 +247,7 @@ export default function AssignmentsPage() {
             ) : (
               <Wand2 className="mr-2 h-4 w-4" />
             )}
-            Auto-Assign
+            {assigning ? "Assigning..." : "Auto-Assign"}
           </Button>
           <Button variant="outline" onClick={loadData}>
             <RefreshCw className="mr-2 h-4 w-4" />
@@ -249,7 +263,7 @@ export default function AssignmentsPage() {
         onDragEnd={handleDragEnd}
       >
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {driveDuties.map((dd) => {
+          {driveDuties.map((dd, index) => {
             const dutyAssignments = assignments.filter(
               (a) =>
                 a.duty_id === dd.duty_id && a.status !== "waitlisted",
@@ -262,7 +276,11 @@ export default function AssignmentsPage() {
                 : 0;
 
             return (
-              <Card key={dd.duty_id} id={dd.duty_id}>
+              <Card key={dd.duty_id} id={dd.duty_id} className="overflow-hidden">
+                <div
+                  className="h-1"
+                  style={{ backgroundColor: COLUMN_COLORS[index % COLUMN_COLORS.length] }}
+                />
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm">
@@ -304,9 +322,10 @@ export default function AssignmentsPage() {
                           />
                         ))}
                         {dutyAssignments.length === 0 && (
-                          <p className="text-center text-xs text-muted-foreground py-4">
-                            No volunteers
-                          </p>
+                          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                            <Inbox className="mb-2 h-5 w-5" />
+                            <p className="text-xs">Drop volunteers here</p>
+                          </div>
                         )}
                       </div>
                     </SortableContext>
@@ -319,7 +338,12 @@ export default function AssignmentsPage() {
 
         <DragOverlay>
           {activeAssignment && (
-            <div className="rounded-md border bg-card p-2 text-sm shadow-lg">
+            <div className="flex items-center gap-2 rounded-md border-2 border-primary bg-card p-2 text-sm shadow-xl scale-105">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                {activeAssignment.volunteers?.name
+                  ? getInitials(activeAssignment.volunteers.name)
+                  : "?"}
+              </div>
               <span className="font-medium">
                 {activeAssignment.volunteers?.name}
               </span>
@@ -343,10 +367,13 @@ export default function AssignmentsPage() {
                   key={a.id}
                   className="flex items-center gap-2 rounded-md border p-2 text-sm"
                 >
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                    {a.volunteers?.name ? getInitials(a.volunteers.name) : "?"}
+                  </div>
                   <span className="font-medium">
                     {a.volunteers?.name}
                   </span>
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-[10px] ml-auto">
                     #{a.id.slice(0, 4)}
                   </Badge>
                 </div>

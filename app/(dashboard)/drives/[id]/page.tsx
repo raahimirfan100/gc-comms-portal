@@ -4,11 +4,14 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
-import { MapPin, Calendar, Utensils, Sun, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { DriveDetailSkeleton } from "@/components/skeletons/drive-detail-skeleton";
+import { formatDate, formatTime } from "@/lib/utils";
+import { MapPin, Calendar, Utensils, Sun, LayoutGrid, Radio, Bell, Phone } from "lucide-react";
 import { DriveStatusControl } from "./drive-status-control";
 
 export default function DriveDetailPage() {
@@ -42,11 +45,7 @@ export default function DriveDetailPage() {
   }, [id]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+    return <DriveDetailSkeleton />;
   }
 
   if (!drive) {
@@ -63,15 +62,20 @@ export default function DriveDetailPage() {
     0,
   );
 
+  const statCards = [
+    { icon: Calendar, label: "Date", value: formatDate(drive.drive_date), color: "bg-primary/10 text-primary" },
+    { icon: Sun, label: "Sunset", value: formatTime(drive.sunset_time), color: "bg-amber-500/10 text-amber-600" },
+    { icon: Utensils, label: "Daigs", value: drive.daig_count, color: "bg-accent/10 text-accent" },
+    { icon: MapPin, label: "Volunteers", value: `${totalAssigned}/${totalCapacity}`, color: "bg-blue-500/10 text-blue-600" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{drive.name}</h1>
-            <Badge className={getStatusColor(drive.status)}>
-              {drive.status.replace("_", " ")}
-            </Badge>
+            <StatusBadge status={drive.status} />
           </div>
           <p className="text-muted-foreground mt-1">
             {drive.seasons?.name}
@@ -81,44 +85,19 @@ export default function DriveDetailPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Date</span>
-            </div>
-            <p className="mt-1 font-medium">{formatDate(drive.drive_date)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Sun className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Sunset</span>
-            </div>
-            <p className="mt-1 font-medium">{formatTime(drive.sunset_time)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Utensils className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Daigs</span>
-            </div>
-            <p className="mt-1 font-medium">{drive.daig_count}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Volunteers</span>
-            </div>
-            <p className="mt-1 font-medium">
-              {totalAssigned}/{totalCapacity}
-            </p>
-          </CardContent>
-        </Card>
+        {statCards.map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.color}`}>
+                  <stat.icon className="h-4 w-4" />
+                </div>
+                <span className="text-sm text-muted-foreground">{stat.label}</span>
+              </div>
+              <p className="mt-2 font-medium">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {drive.location_name && (
@@ -129,18 +108,30 @@ export default function DriveDetailPage() {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Link href={`/drives/${id}/assignments`}>
-          <Button>Duty Board</Button>
+          <Button>
+            <LayoutGrid className="mr-2 h-4 w-4" />
+            Duty Board
+          </Button>
         </Link>
         <Link href={`/drives/${id}/live`}>
-          <Button variant="outline">Live Dashboard</Button>
+          <Button variant="outline">
+            <Radio className="mr-2 h-4 w-4" />
+            Live Dashboard
+          </Button>
         </Link>
         <Link href={`/drives/${id}/reminders`}>
-          <Button variant="outline">Reminders</Button>
+          <Button variant="outline">
+            <Bell className="mr-2 h-4 w-4" />
+            Reminders
+          </Button>
         </Link>
         <Link href={`/drives/${id}/calls`}>
-          <Button variant="outline">Call Center</Button>
+          <Button variant="outline">
+            <Phone className="mr-2 h-4 w-4" />
+            Call Center
+          </Button>
         </Link>
       </div>
 
@@ -174,12 +165,7 @@ export default function DriveDetailPage() {
                       {dd.current_assigned}/{capacity}
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
-                  </div>
+                  <Progress value={Math.min(pct, 100)} className="h-2" />
                 </div>
               );
             })}

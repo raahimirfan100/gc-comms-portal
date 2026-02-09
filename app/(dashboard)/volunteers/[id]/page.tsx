@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Card,
   CardContent,
@@ -18,8 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatPhone, formatDate, getStatusColor } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatPhone, formatDate } from "@/lib/utils";
+import { CalendarDays, ClipboardList, TrendingUp, Star } from "lucide-react";
 
 export default function VolunteerProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -56,8 +58,29 @@ export default function VolunteerProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardContent>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full mb-2" />
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -81,6 +104,18 @@ export default function VolunteerProfilePage() {
       ? Math.round((completedCount / totalAssignments) * 100)
       : 0;
 
+  const statCards = [
+    { icon: CalendarDays, label: "Total Drives", value: volunteer.total_drives_attended, color: "bg-primary/10 text-primary" },
+    { icon: ClipboardList, label: "Assignments", value: totalAssignments, color: "bg-amber-500/10 text-amber-600" },
+    { icon: TrendingUp, label: "Attendance Rate", value: `${attendanceRate}%`, color: "bg-accent/10 text-accent" },
+    {
+      icon: Star,
+      label: "Top Duty",
+      value: Object.entries(dutyFrequency).sort((a, b) => b[1] - a[1])[0]?.[0] || "—",
+      color: "bg-blue-500/10 text-blue-600",
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -96,36 +131,19 @@ export default function VolunteerProfilePage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total Drives</p>
-            <p className="text-2xl font-bold">
-              {volunteer.total_drives_attended}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Assignments</p>
-            <p className="text-2xl font-bold">{totalAssignments}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Attendance Rate</p>
-            <p className="text-2xl font-bold">{attendanceRate}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Top Duty</p>
-            <p className="text-2xl font-bold">
-              {Object.entries(dutyFrequency).sort(
-                (a, b) => b[1] - a[1],
-              )[0]?.[0] || "—"}
-            </p>
-          </CardContent>
-        </Card>
+        {statCards.map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.color}`}>
+                  <stat.icon className="h-4 w-4" />
+                </div>
+                <span className="text-sm text-muted-foreground">{stat.label}</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Card>
@@ -149,9 +167,7 @@ export default function VolunteerProfilePage() {
                   <TableCell>{formatDate(a.drives?.drive_date)}</TableCell>
                   <TableCell>{a.duties?.name}</TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(a.status)}>
-                      {a.status.replace("_", " ")}
-                    </Badge>
+                    <StatusBadge status={a.status} />
                   </TableCell>
                 </TableRow>
               ))}

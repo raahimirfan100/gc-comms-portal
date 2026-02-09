@@ -6,11 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Table,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Loader2, Phone, PhoneCall } from "lucide-react";
-import { formatPhone, getStatusColor } from "@/lib/utils";
+import { formatPhone } from "@/lib/utils";
 
 type CallEntry = {
   id: string;
@@ -157,8 +158,24 @@ export default function CallCenterPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-10 w-36" />
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full mb-2" />
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -178,70 +195,81 @@ export default function CallCenterPage() {
           </Button>
           <Button onClick={triggerCalls} disabled={calling || selected.size === 0}>
             {calling ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Calling...
+              </>
             ) : (
-              <PhoneCall className="mr-2 h-4 w-4" />
+              <>
+                <PhoneCall className="mr-2 h-4 w-4" />
+                Call Selected ({selected.size})
+              </>
             )}
-            Call Selected ({selected.size})
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8" />
-                <TableHead>Volunteer</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Duty</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Call</TableHead>
-                <TableHead>Duration</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {entries.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selected.has(e.volunteer_id)}
-                      onCheckedChange={() => toggleSelect(e.volunteer_id)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {e.volunteer_name}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {formatPhone(e.volunteer_phone)}
-                  </TableCell>
-                  <TableCell>{e.duty_name}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(e.assignment_status)}>
-                      {e.assignment_status.replace("_", " ")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {e.last_call_result ? (
-                      <Badge variant="outline">
-                        {e.last_call_result.replace("_", " ")}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {e.last_call_duration
-                      ? `${e.last_call_duration}s`
-                      : "—"}
-                  </TableCell>
+      {entries.length === 0 ? (
+        <EmptyState
+          icon={Phone}
+          title="No Volunteers to Call"
+          description="Assign volunteers to this drive first, then use the call center to confirm attendance."
+        />
+      ) : (
+        <Card>
+          <CardContent className="pt-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8" />
+                  <TableHead>Volunteer</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Duty</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Call</TableHead>
+                  <TableHead>Duration</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {entries.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.has(e.volunteer_id)}
+                        onCheckedChange={() => toggleSelect(e.volunteer_id)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {e.volunteer_name}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {formatPhone(e.volunteer_phone)}
+                    </TableCell>
+                    <TableCell>{e.duty_name}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={e.assignment_status} />
+                    </TableCell>
+                    <TableCell>
+                      {e.last_call_result ? (
+                        <Badge variant="outline">
+                          {e.last_call_result.replace("_", " ")}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {e.last_call_duration
+                        ? `${e.last_call_duration}s`
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -8,23 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, Plus, Send, Trash2 } from "lucide-react";
+import { Plus, Trash2, Bell } from "lucide-react";
 import type { Tables } from "@/lib/supabase/types";
 
 export default function RemindersPage() {
@@ -82,8 +74,24 @@ export default function RemindersPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="pt-6 space-y-3">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -128,7 +136,7 @@ export default function RemindersPage() {
                     />
                   </div>
                   {r.is_sent && (
-                    <Badge className="bg-green-100 text-green-800">Sent</Badge>
+                    <StatusBadge status="completed" />
                   )}
                 </div>
                 <Button
@@ -156,11 +164,11 @@ export default function RemindersPage() {
         ))}
 
         {reminders.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              No reminders configured. Click "Add Reminder" to create one.
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Bell}
+            title="No Reminders"
+            description="No reminders configured. Click 'Add Reminder' to create one."
+          />
         )}
       </div>
     </div>
