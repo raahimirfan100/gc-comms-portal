@@ -21,7 +21,7 @@ test.describe("Phase 5: Volunteers (requires login)", () => {
 
   test("5.1 Volunteer list: table, search, gender filter", async ({ page }) => {
     await page.goto("/volunteers");
-    await expect(page.getByText("Volunteers")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Volunteers" })).toBeVisible();
     await expect(page.getByPlaceholder(/search by name/i)).toBeVisible();
   });
 
@@ -39,7 +39,7 @@ test.describe("Phase 5: Volunteers (requires login)", () => {
 
   test("5.3 Volunteer profile: open from list", async ({ page }) => {
     await page.goto("/volunteers");
-    const firstProfileLink = page.locator('a[href^="/volunteers/"]').first();
+    const firstProfileLink = page.locator('table a[href^="/volunteers/"]').first();
     if (!(await firstProfileLink.isVisible())) {
       test.skip();
       return;

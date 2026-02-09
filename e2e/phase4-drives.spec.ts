@@ -35,6 +35,11 @@ test.describe("Phase 4: Drives (requires login)", () => {
 
   test("4.3 Create drive with active season", async ({ page }) => {
     await page.goto("/drives");
+    await expect(
+      page.getByText("No Active Season").or(
+        page.getByRole("heading", { name: "Iftaar Drives" })
+      )
+    ).toBeVisible({ timeout: 15000 });
     const noSeason = await page.getByText("No Active Season").isVisible();
     if (noSeason) {
       test.skip();
@@ -42,12 +47,12 @@ test.describe("Phase 4: Drives (requires login)", () => {
     }
     await page.goto("/drives/new");
     await page.waitForLoadState("networkidle");
+    const createBtn = page.getByRole("button", { name: /create drive/i });
+    await expect(createBtn).toBeEnabled({ timeout: 15000 });
     await page.getByLabel(/drive name/i).fill("E2E Test Drive");
     await page.getByLabel(/date/i).fill("2026-03-15");
     await page.getByLabel(/location name/i).fill("E2E Location");
     await page.getByLabel(/daig count/i).fill("5");
-    const createBtn = page.getByRole("button", { name: /create drive/i });
-    await expect(createBtn).toBeEnabled({ timeout: 25000 });
     await createBtn.click();
     await expect(page.getByText(/created|success|Iftaar Drives/i)).toBeVisible({ timeout: 15000 });
   });

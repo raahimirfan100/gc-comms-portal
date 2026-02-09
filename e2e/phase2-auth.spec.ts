@@ -47,6 +47,6 @@ test.describe("Phase 2: Auth pages", () => {
     await page.getByLabel(/password/i).fill(password);
     await page.getByRole("button", { name: /login/i }).click();
     await expect(page).toHaveURL(/\/drives/, { timeout: 15000 });
-    await expect(page.getByText(/Iftaar Drives|Grand Citizens|No Active Season/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Iftaar Drives|Grand Citizens|No Active Season/i).first()).toBeVisible({ timeout: 5000 });
   });
 });

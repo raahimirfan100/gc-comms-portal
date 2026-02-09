@@ -2,6 +2,8 @@
 
 Execute these scenarios in order where possible. Use the **browser** for every user flow; use terminal/code for build, lint, and API checks. Record results in `TEST_LOG.md`.
 
+**Logical flow:** See `APPLICATION_FLOW.md` for the defined application flow. Playwright specs follow phase order: phase1 (public) → phase2 (auth) → phase3–7 (dashboard) → phase8 (edge) → flow-admin-journey (full journey).
+
 ---
 
 ## 0. Pre-flight (no browser)

@@ -1,9 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * E2E tests run in user-flow order (alphabetical by file):
+ * E2E tests run in user-flow order (see docs/testing/APPLICATION_FLOW.md):
  * phase1 Public → phase2 Auth → phase3 Dashboard → phase4 Drives →
- * phase5 Volunteers → phase6 Duties → phase7 Settings → phase8 Edge
+ * phase5 Volunteers → phase6 Duties → phase7 Settings → phase8 Edge →
+ * flow-admin-journey (full admin journey)
  */
 export default defineConfig({
   testDir: "./e2e",

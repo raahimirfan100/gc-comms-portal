@@ -18,7 +18,7 @@ test.describe("Phase 3: Dashboard navigation (requires login)", () => {
   test("3.1 Sidebar: Drives", async ({ page }) => {
     await page.getByRole("link", { name: /drives/i }).first().click();
     await expect(page).toHaveURL(/\/drives/);
-    await expect(page.getByText(/Iftaar Drives|No active season/i)).toBeVisible();
+    await expect(page.getByText(/Iftaar Drives|No active season/i).first()).toBeVisible();
   });
 
   test("3.2 Sidebar: Volunteers", async ({ page }) => {
