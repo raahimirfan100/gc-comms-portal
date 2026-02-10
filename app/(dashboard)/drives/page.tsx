@@ -13,7 +13,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, MapPin, Calendar, Utensils, Loader2 } from "lucide-react";
+import {
+  Plus,
+  MapPin,
+  Calendar,
+  Utensils,
+  Loader2,
+  AlertTriangle,
+} from "lucide-react";
 import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
 
 type DriveWithDuties = {
@@ -24,6 +31,7 @@ type DriveWithDuties = {
   daig_count: number;
   sunset_time: string | null;
   status: string;
+   volunteer_target: number | null;
   drive_duties: Array<{
     id: string;
     calculated_capacity: number;
@@ -90,19 +98,21 @@ export default function DrivesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">Iftaar Drives</h1>
           <p className="text-muted-foreground">
             Manage all iftaar drives for the current season
           </p>
         </div>
-        <Link href="/drives/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Drive
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <Link href="/drives/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Drive
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {drives.length === 0 ? (
@@ -134,6 +144,11 @@ export default function DrivesPage() {
               totalCapacity > 0
                 ? Math.round((totalAssigned / totalCapacity) * 100)
                 : 0;
+            const hasTarget =
+              typeof drive.volunteer_target === "number" &&
+              drive.volunteer_target > 0;
+            const capacityMismatch =
+              hasTarget && drive.volunteer_target !== totalCapacity;
 
             return (
               <Link key={drive.id} href={`/drives/${drive.id}`}>
@@ -174,6 +189,16 @@ export default function DrivesPage() {
                         <span>{fillPercent}%</span>
                       </div>
                       <Progress value={fillPercent} className="h-2" />
+                      {capacityMismatch && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] text-amber-400">
+                          <AlertTriangle className="h-3 w-3" />
+                          <span>
+                            Target {drive.volunteer_target}, capacity{" "}
+                            {totalCapacity}. You may need to override duty
+                            capacities.
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

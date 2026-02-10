@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -19,6 +28,7 @@ import {
   RefreshCw,
   Users,
   GripVertical,
+  Settings,
 } from "lucide-react";
 import {
   DndContext,
@@ -109,6 +119,9 @@ export default function AssignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [capacityModalOpen, setCapacityModalOpen] = useState(false);
+  const [capacityInputs, setCapacityInputs] = useState<Record<string, string>>({});
+  const [savingCapacity, setSavingCapacity] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -174,6 +187,64 @@ export default function AssignmentsPage() {
     }
   }
 
+  function openCapacityModal() {
+    const inputs: Record<string, string> = {};
+    driveDuties.forEach((dd) => {
+      const capacity =
+        dd.manual_capacity_override ?? dd.calculated_capacity ?? 0;
+      inputs[dd.id] = String(capacity);
+    });
+    setCapacityInputs(inputs);
+    setCapacityModalOpen(true);
+  }
+
+  async function handleSaveAllCapacities() {
+    setSavingCapacity(true);
+    const updates = driveDuties.map((dd) => {
+      const inputValue = capacityInputs[dd.id]?.trim();
+      const newValue =
+        inputValue === "" || inputValue === String(dd.calculated_capacity)
+          ? null
+          : Math.max(0, Number(inputValue) || 0);
+      return {
+        id: dd.id,
+        manual_capacity_override: newValue,
+      };
+    });
+
+    // Batch update all capacities
+    const promises = updates.map((update) =>
+      supabase
+        .from("drive_duties")
+        .update({ manual_capacity_override: update.manual_capacity_override })
+        .eq("id", update.id),
+    );
+
+    const results = await Promise.all(promises);
+    const errors = results.filter((r) => r.error);
+
+    setSavingCapacity(false);
+
+    if (errors.length > 0) {
+      toast.error(
+        `Failed to update ${errors.length} capacity override(s). Please try again.`,
+      );
+      return;
+    }
+
+    const overrideCount = updates.filter(
+      (u) => u.manual_capacity_override !== null,
+    ).length;
+    toast.success(
+      overrideCount > 0
+        ? `Updated ${overrideCount} duty capacity override(s).`
+        : "All capacity overrides cleared (using system defaults).",
+    );
+    setCapacityModalOpen(false);
+    setCapacityInputs({});
+    loadData();
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string);
   }
@@ -225,8 +296,14 @@ export default function AssignmentsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Duty Board</h1>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold">Duty Board</h1>
+        </div>
         <div className="flex gap-2">
+          <Button onClick={openCapacityModal} variant="outline">
+            <Settings className="mr-2 h-4 w-4" />
+            Edit Capacities
+          </Button>
           <Button onClick={handleAutoAssign} disabled={assigning}>
             {assigning ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -327,6 +404,122 @@ export default function AssignmentsPage() {
           )}
         </DragOverlay>
       </DndContext>
+
+      <Dialog
+        open={capacityModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCapacityModalOpen(false);
+            setCapacityInputs({});
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Duty Capacities</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Adjust the maximum number of volunteers for each duty on this
+              drive. Leave a field empty or set it to the system default to use
+              the calculated capacity.
+            </p>
+            <div className="space-y-3">
+              {driveDuties.map((dd) => {
+                const currentCapacity =
+                  dd.manual_capacity_override ?? dd.calculated_capacity;
+                const inputValue = capacityInputs[dd.id] ?? String(currentCapacity);
+                const isOverridden = dd.manual_capacity_override !== null;
+
+                return (
+                  <div key={dd.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label
+                        htmlFor={`capacity_${dd.id}`}
+                        className="text-sm font-medium"
+                      >
+                        {dd.duties?.name}
+                        {dd.duties?.gender_restriction && (
+                          <Badge
+                            variant="outline"
+                            className="ml-2 text-xs"
+                          >
+                            {dd.duties.gender_restriction}
+                          </Badge>
+                        )}
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        System default: {dd.calculated_capacity}
+                        {isOverridden && (
+                          <span className="ml-2 text-amber-400">
+                            (overridden)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <Input
+                      id={`capacity_${dd.id}`}
+                      type="number"
+                      min={0}
+                      value={inputValue}
+                      onChange={(e) =>
+                        setCapacityInputs({
+                          ...capacityInputs,
+                          [dd.id]: e.target.value,
+                        })
+                      }
+                      placeholder={String(dd.calculated_capacity)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Currently assigned: {dd.current_assigned} volunteer
+                      {dd.current_assigned !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <DialogFooter className="flex justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const cleared: Record<string, string> = {};
+                driveDuties.forEach((dd) => {
+                  cleared[dd.id] = String(dd.calculated_capacity);
+                });
+                setCapacityInputs(cleared);
+              }}
+              disabled={savingCapacity}
+            >
+              Reset all to defaults
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCapacityModalOpen(false);
+                  setCapacityInputs({});
+                }}
+                disabled={savingCapacity}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveAllCapacities}
+                disabled={savingCapacity}
+              >
+                {savingCapacity && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Save All
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {waitlisted.length > 0 && (
         <Card>

@@ -3,6 +3,33 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+/** Same formula as createDrive: sum of linear duty capacities for the given daig count. */
+export async function getSuggestedVolunteerTarget(
+  daigCount: number,
+): Promise<number | null> {
+  if (daigCount <= 0) return null;
+  const supabase = await createClient();
+  const { data: duties } = await supabase
+    .from("duties")
+    .select("id")
+    .eq("is_active", true)
+    .order("display_order");
+  if (!duties?.length) return null;
+  const { data: rules } = await supabase
+    .from("duty_capacity_rules")
+    .select("*");
+  let total = 0;
+  for (const duty of duties) {
+    const rule = rules?.find((r) => r.duty_id === duty.id);
+    if (rule?.capacity_mode === "linear") {
+      total +=
+        (rule.base_count ?? 0) +
+        Math.ceil((rule.per_daig_count ?? 0) * daigCount);
+    }
+  }
+  return total > 0 ? total : null;
+}
+
 export async function createDrive(formData: FormData) {
   const supabase = await createClient();
 
@@ -12,9 +39,25 @@ export async function createDrive(formData: FormData) {
   const locationName = formData.get("location_name") as string;
   const locationAddress = formData.get("location_address") as string;
   const daigCount = parseInt(formData.get("daig_count") as string) || 0;
+  const locationLatRaw = formData.get("location_lat") as string | null;
+  const locationLngRaw = formData.get("location_lng") as string | null;
+  const locationLat =
+    locationLatRaw && locationLatRaw.trim() !== ""
+      ? parseFloat(locationLatRaw)
+      : null;
+  const locationLng =
+    locationLngRaw && locationLngRaw.trim() !== ""
+      ? parseFloat(locationLngRaw)
+      : null;
   const sunsetTime = formData.get("sunset_time") as string | null;
   const sunsetSource = (formData.get("sunset_source") as string) || "aladhan";
   const status = (formData.get("status") as string) || "draft";
+  const notes = (formData.get("notes") as string) || null;
+  const volunteerTargetRaw = formData.get("volunteer_target") as string | null;
+  const volunteerTarget =
+    volunteerTargetRaw && volunteerTargetRaw.trim() !== ""
+      ? parseInt(volunteerTargetRaw, 10) || null
+      : null;
 
   const { data: drive, error } = await supabase
     .from("drives")
@@ -24,9 +67,13 @@ export async function createDrive(formData: FormData) {
       drive_date: driveDate,
       location_name: locationName || null,
       location_address: locationAddress || null,
+      location_lat: locationLat,
+      location_lng: locationLng,
       daig_count: daigCount,
       sunset_time: sunsetTime || null,
       sunset_source: sunsetSource,
+      volunteer_target: volunteerTarget,
+      notes,
       status: status as "draft" | "open",
     })
     .select()
@@ -120,11 +167,14 @@ export async function updateDrive(id: string, formData: FormData) {
     "drive_date",
     "location_name",
     "location_address",
+    "location_lat",
+    "location_lng",
     "sunset_time",
     "sunset_source",
     "iftaar_time",
     "status",
     "notes",
+    "volunteer_target",
   ];
   for (const field of fields) {
     const value = formData.get(field);

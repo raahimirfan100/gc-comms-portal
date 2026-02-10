@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,6 @@ import type { Tables } from "@/lib/supabase/types";
 
 export default function DutyCapacityRulesPage() {
   const { id: dutyId } = useParams<{ id: string }>();
-  const router = useRouter();
   const supabase = createClient();
   const [duty, setDuty] = useState<Tables<"duties"> | null>(null);
   const [rules, setRules] = useState<Tables<"duty_capacity_rules">[]>([]);
@@ -289,10 +288,6 @@ export default function DutyCapacityRulesPage() {
           </div>
         </CardContent>
       </Card>
-
-      <Button variant="outline" onClick={() => router.back()}>
-        Back to Duties
-      </Button>
     </div>
   );
 }

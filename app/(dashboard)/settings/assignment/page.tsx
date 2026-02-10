@@ -101,7 +101,7 @@ export default function AssignmentSettingsPage() {
               setConfig({ ...config, history_lookback: v })
             }
           >
-            <SelectTrigger className="w-[250px]">
+            <SelectTrigger className="w-full sm:w-[250px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -1,0 +1,186 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import Script from "next/script";
+
+type LocationMapProps = {
+  lat?: number | null;
+  lng?: number | null;
+  onChange?: (coords: { lat: number; lng: number }) => void;
+  readOnly?: boolean;
+  className?: string;
+};
+
+const KARACHI_CENTER = { lat: 24.8607, lng: 67.0011 };
+
+export function LocationMap({
+  lat,
+  lng,
+  onChange,
+  readOnly = false,
+  className = "",
+}: LocationMapProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [marker, setMarker] = useState<google.maps.Marker | null>(null);
+  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
+
+  const hasLocation = typeof lat === "number" && typeof lng === "number";
+
+  const center = useMemo(
+    () =>
+      hasLocation
+        ? { lat: lat as number, lng: lng as number }
+        : KARACHI_CENTER,
+    [hasLocation, lat, lng],
+  );
+
+  // If the Google Maps script was already loaded elsewhere (e.g. another page),
+  // pick that up even if our <Script> onLoad doesn't fire again.
+  useEffect(() => {
+    if (
+      !scriptLoaded &&
+      typeof window !== "undefined" &&
+      (window as any).google &&
+      (window as any).google.maps
+    ) {
+      setScriptLoaded(true);
+    }
+  }, [scriptLoaded]);
+
+  // Initialize map once the script is loaded
+  useEffect(() => {
+    if (!scriptLoaded) return;
+    if (!containerRef.current) return;
+    if (map) return;
+
+    const m = new google.maps.Map(containerRef.current, {
+      center,
+      zoom: 13,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+
+    setMap(m);
+  }, [scriptLoaded, map, center]);
+
+  // Keep center + marker in sync with props
+  useEffect(() => {
+    if (!map) return;
+
+    map.setCenter(center);
+
+    if (!hasLocation) {
+      if (marker) {
+        marker.setMap(null);
+        setMarker(null);
+      }
+      setResolvedAddress(null);
+      return;
+    }
+
+    if (!marker) {
+      const mk = new google.maps.Marker({
+        position: center,
+        map,
+      });
+      setMarker(mk);
+    } else {
+      marker.setPosition(center);
+      marker.setMap(map);
+    }
+  }, [map, marker, hasLocation, center.lat, center.lng]);
+
+  // Reverse geocode to a human-readable address when we have a location
+  useEffect(() => {
+    if (!map || !scriptLoaded || !hasLocation) {
+      setResolvedAddress(null);
+      return;
+    }
+
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: center }, (results, status) => {
+      if (status === "OK" && results && results[0]) {
+        setResolvedAddress(results[0].formatted_address ?? null);
+      } else {
+        setResolvedAddress(null);
+      }
+    });
+  }, [map, scriptLoaded, hasLocation, center.lat, center.lng]);
+
+  // Allow clicking on the map to choose a location when not read-only
+  useEffect(() => {
+    if (!map || readOnly) return;
+
+    const listener = map.addListener(
+      "click",
+      (e: google.maps.MapMouseEvent) => {
+        if (!e.latLng) return;
+        const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+
+        if (!marker) {
+          const mk = new google.maps.Marker({
+            position: coords,
+            map,
+          });
+          setMarker(mk);
+        } else {
+          marker.setPosition(coords);
+          marker.setMap(map);
+        }
+
+        onChange?.(coords);
+      },
+    );
+
+    return () => {
+      google.maps.event.removeListener(listener);
+    };
+  }, [map, marker, readOnly, onChange]);
+
+  // In read-only mode, clicking the marker opens Google Maps directions
+  useEffect(() => {
+    if (!marker || !readOnly) return;
+
+    const listener = marker.addListener("click", () => {
+      const pos = marker.getPosition();
+      if (!pos) return;
+      const latVal = pos.lat();
+      const lngVal = pos.lng();
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+        `${latVal},${lngVal}`,
+      )}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+
+    return () => {
+      google.maps.event.removeListener(listener);
+    };
+  }, [marker, readOnly]);
+
+  return (
+    <>
+      <Script
+        id="google-maps-js"
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&language=en`}
+        strategy="afterInteractive"
+        onLoad={() => setScriptLoaded(true)}
+      />
+      <div className={className}>
+        <div
+          ref={containerRef}
+          className="h-80 w-full rounded-md border border-border"
+        />
+        {hasLocation && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Selected location:{" "}
+            {resolvedAddress ?? `${lat?.toFixed(5)}, ${lng?.toFixed(5)}`}
+          </p>
+        )}
+      </div>
+    </>
+  );
+}
+

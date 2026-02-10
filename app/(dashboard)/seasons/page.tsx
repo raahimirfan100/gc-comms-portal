@@ -30,7 +30,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Loader2 } from "lucide-react";
 import type { Tables } from "@/lib/supabase/types";
@@ -74,15 +73,13 @@ export default function SeasonsPage() {
 
   // Edit form controlled state
   const [editName, setEditName] = useState("");
+  const [editYear, setEditYear] = useState(currentYear);
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
 
   // Computed values
   const createRamadanInfo = getRamadanData(createYear);
 
-  const editYear = editStartDate
-    ? new Date(editStartDate + "T00:00:00").getFullYear()
-    : currentYear;
   const editRamadanInfo = getRamadanData(editYear);
 
   useEffect(() => {
@@ -155,8 +152,22 @@ export default function SeasonsPage() {
   function openEditDialog(season: Tables<"seasons">) {
     setEditTarget(season);
     setEditName(season.name);
+    const year = season.start_date
+      ? new Date(season.start_date + "T00:00:00").getFullYear()
+      : currentYear;
+    setEditYear(year);
     setEditStartDate(season.start_date);
     setEditEndDate(season.end_date);
+  }
+
+  function handleEditYearChange(year: number) {
+    if (isNaN(year)) return;
+    setEditYear(year);
+    const data = getRamadanData(year);
+    if (data?.startDate) setEditStartDate(data.startDate);
+    else setEditStartDate("");
+    if (data?.endDate) setEditEndDate(data.endDate);
+    else setEditEndDate("");
   }
 
   async function handleEditSeason(e: React.FormEvent<HTMLFormElement>) {
@@ -164,17 +175,11 @@ export default function SeasonsPage() {
     if (!editTarget) return;
     setEditSaving(true);
 
-    const ramadanInfo = getRamadanData(
-      editStartDate
-        ? new Date(editStartDate + "T00:00:00").getFullYear()
-        : currentYear,
-    );
-
     const { error } = await supabase
       .from("seasons")
       .update({
         name: editName,
-        hijri_year: ramadanInfo?.hijriYear ?? editTarget.hijri_year,
+        hijri_year: editRamadanInfo?.hijriYear ?? editTarget.hijri_year,
         start_date: editStartDate,
         end_date: editEndDate,
       })
@@ -312,8 +317,8 @@ export default function SeasonsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
               <CardTitle>Seasons</CardTitle>
               <CardDescription>
                 Each season scopes drives, volunteers, and analytics. Only one
@@ -328,7 +333,7 @@ export default function SeasonsPage() {
               }}
             >
               <DialogTrigger asChild>
-                <Button>
+                <Button className="self-start sm:self-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   New Season
                 </Button>
@@ -440,6 +445,7 @@ export default function SeasonsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Gregorian Year</TableHead>
                 <TableHead>Hijri Year</TableHead>
                 <TableHead>Start</TableHead>
                 <TableHead>End</TableHead>
@@ -451,6 +457,11 @@ export default function SeasonsPage() {
               {seasons.map((season) => (
                 <TableRow key={season.id}>
                   <TableCell className="font-medium">{season.name}</TableCell>
+                  <TableCell>
+                    {season.start_date
+                      ? new Date(season.start_date + "T00:00:00").getFullYear()
+                      : "—"}
+                  </TableCell>
                   <TableCell>
                     {season.hijri_year
                       ? `${season.hijri_year} AH`
@@ -510,7 +521,7 @@ export default function SeasonsPage() {
               {seasons.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="text-center text-muted-foreground py-8"
                   >
                     No seasons yet. Create one to get started.
@@ -546,15 +557,32 @@ export default function SeasonsPage() {
                 />
               </FormField>
 
-              {/* Hijri Year (informational) */}
-              {editRamadanInfo && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>Hijri Year:</span>
-                  <Badge variant="secondary">
-                    {editRamadanInfo.hijriYear} AH
-                  </Badge>
+              {/* Gregorian Year with Hijri adornment */}
+              <FormField
+                label="Gregorian Year"
+                htmlFor="edit_year"
+                required
+              >
+                <div className="relative">
+                  <Input
+                    id="edit_year"
+                    type="number"
+                    value={editYear}
+                    onChange={(e) =>
+                      handleEditYearChange(parseInt(e.target.value))
+                    }
+                    className="pr-20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    min={2020}
+                    max={2099}
+                    required
+                  />
+                  {editRamadanInfo && (
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {editRamadanInfo.hijriYear} AH
+                    </span>
+                  )}
                 </div>
-              )}
+              </FormField>
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-4">

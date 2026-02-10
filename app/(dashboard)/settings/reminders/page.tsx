@@ -86,15 +86,15 @@ export default function ReminderSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">Default Reminders</h1>
           <p className="text-muted-foreground">
             Default templates applied to new drives. Variables: {"{name}"},{" "}
             {"{duty}"}, {"{drive_name}"}, {"{sunset_time}"}, {"{location}"}
           </p>
         </div>
-        <Button onClick={addReminder}>
+        <Button className="self-start sm:self-auto" onClick={addReminder}>
           <Plus className="mr-2 h-4 w-4" />
           Add Template
         </Button>
@@ -103,16 +103,16 @@ export default function ReminderSettingsPage() {
       <div className="space-y-4">
         {reminders.map((r, i) => (
           <Card key={i}>
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center gap-4">
-                <div className="space-y-1 flex-1">
+            <CardContent className="space-y-3 pt-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex-1 space-y-1">
                   <Label>Type</Label>
                   <Input
                     value={r.type}
                     onChange={(e) => updateReminder(i, "type", e.target.value)}
                   />
                 </div>
-                <div className="space-y-1 w-40">
+                <div className="space-y-1 sm:w-40">
                   <Label>Hours before sunset</Label>
                   <Input
                     type="number"
@@ -130,7 +130,7 @@ export default function ReminderSettingsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="mt-5"
+                  className="mt-2 sm:mt-5"
                   onClick={() => removeReminder(i)}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />

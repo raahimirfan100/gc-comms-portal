@@ -139,9 +139,9 @@ export default function VolunteerRegisterPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-8 pb-8 space-y-4">
+          <CardContent className="space-y-4 pb-8 pt-8">
             <CheckCircle2 className="mx-auto h-16 w-16 text-green-600" />
             <h2 className="text-2xl font-bold">JazakAllah Khair!</h2>
             <p className="text-muted-foreground">
@@ -149,7 +149,7 @@ export default function VolunteerRegisterPage() {
             </p>
             {assignmentInfo && (
               <div className="mt-4 rounded-md bg-accent p-4 text-left">
-                <p className="font-medium mb-2">Your Duty Assignments:</p>
+                <p className="mb-2 font-medium">Your Duty Assignments:</p>
                 <pre className="whitespace-pre-wrap text-sm">
                   {assignmentInfo}
                 </pre>
@@ -165,7 +165,7 @@ export default function VolunteerRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">

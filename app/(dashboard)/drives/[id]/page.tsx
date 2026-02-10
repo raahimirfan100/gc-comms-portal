@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -16,10 +17,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
-import { MapPin, Calendar, Utensils, Sun, Loader2, Trash2 } from "lucide-react";
+import {
+  MapPin,
+  Calendar,
+  Utensils,
+  Sun,
+  Loader2,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
 import { DriveStatusControl } from "./drive-status-control";
 import { deleteDrive } from "../actions";
 import { toast } from "sonner";
+
+const LocationMap = dynamic(
+  () =>
+    import("@/components/dashboard/location-map").then(
+      (m) => m.LocationMap,
+    ),
+  { ssr: false },
+);
 
 export default function DriveDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -106,6 +123,10 @@ export default function DriveDetailPage() {
     (sum, dd) => sum + dd.current_assigned,
     0,
   );
+  const hasTarget =
+    typeof drive.volunteer_target === "number" && drive.volunteer_target > 0;
+  const capacityMismatch =
+    hasTarget && drive.volunteer_target !== totalCapacity;
 
   return (
     <div className="space-y-6">
@@ -129,9 +150,27 @@ export default function DriveDetailPage() {
         </div>
       </div>
 
+      {capacityMismatch && (
+        <Card className="border-amber-500/60 bg-amber-500/5">
+          <CardContent className="flex items-start gap-2 px-4 py-3 text-sm text-amber-400 sm:px-6 sm:py-4">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Target volunteers for this drive is{" "}
+              <span className="font-semibold">
+                {drive.volunteer_target}
+              </span>
+              , but current total duty capacity is{" "}
+              <span className="font-semibold">{totalCapacity}</span>. Some
+              volunteers may end up without a duty. Consider adjusting
+              capacities on the Duty Board or updating the daig count.
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Date</span>
@@ -140,7 +179,7 @@ export default function DriveDetailPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Sun className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Sunset</span>
@@ -149,7 +188,7 @@ export default function DriveDetailPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Utensils className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Daigs</span>
@@ -158,7 +197,7 @@ export default function DriveDetailPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Volunteers</span>
@@ -193,48 +232,79 @@ export default function DriveDetailPage() {
         </Link>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Duty Capacity Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {driveDuties.map((dd) => {
-              const capacity =
-                dd.manual_capacity_override ?? dd.calculated_capacity;
-              const pct =
-                capacity > 0
-                  ? Math.round((dd.current_assigned / capacity) * 100)
-                  : 0;
-              const duty = dd.duties;
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Duty Capacity Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {driveDuties.map((dd) => {
+                const capacity =
+                  dd.manual_capacity_override ?? dd.calculated_capacity;
+                const pct =
+                  capacity > 0
+                    ? Math.round((dd.current_assigned / capacity) * 100)
+                    : 0;
+                const duty = dd.duties;
 
-              return (
-                <div key={dd.id} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">
-                      {duty?.name}
-                      {duty?.gender_restriction && (
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          {duty.gender_restriction}
-                        </Badge>
-                      )}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {dd.current_assigned}/{capacity}
-                    </span>
+                return (
+                  <div key={dd.id} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">
+                        {duty?.name}
+                        {duty?.gender_restriction && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            {duty.gender_restriction}
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {dd.current_assigned}/{capacity}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {typeof drive.location_lat === "number" &&
+          typeof drive.location_lng === "number" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Drive Location</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LocationMap
+                  lat={drive.location_lat}
+                  lng={drive.location_lng}
+                  readOnly
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => {
+                    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                      `${drive.location_lat},${drive.location_lng}`,
+                    )}`;
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  Open in Google Maps
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+      </div>
 
       {/* Delete Drive Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={(open) => { if (!open) { setDeleteOpen(false); setDeleteInfo(null); } }}>

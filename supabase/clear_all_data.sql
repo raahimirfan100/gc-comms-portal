@@ -1,6 +1,8 @@
 -- Clear all data from all public tables EXCEPT auth.users
--- Run this in the Supabase SQL Editor
--- Tables are truncated in dependency order (children first) to avoid FK violations
+-- Run this in the Supabase SQL Editor.
+-- Tables are truncated in dependency order (children first) to avoid FK violations.
+-- After running this script, run reseed_defaults.sql if you want the
+-- default duties, capacity rules, and app_config entries back.
 
 BEGIN;
 

@@ -62,12 +62,12 @@ export default function VolunteersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">Volunteers</h1>
           <p className="text-muted-foreground">{total} total volunteers</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Link href="/volunteers/import">
             <Button variant="outline">
               <Upload className="mr-2 h-4 w-4" />
@@ -83,7 +83,7 @@ export default function VolunteersPage() {
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -103,7 +103,7 @@ export default function VolunteersPage() {
             setPage(0);
           }}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="Gender" />
           </SelectTrigger>
           <SelectContent>
@@ -184,12 +184,12 @@ export default function VolunteersPage() {
       </div>
 
       {total > pageSize && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
             Showing {page * pageSize + 1}-
             {Math.min((page + 1) * pageSize, total)} of {total}
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:justify-end">
             <Button
               variant="outline"
               size="sm"

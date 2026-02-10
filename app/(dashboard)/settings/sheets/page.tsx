@@ -87,8 +87,8 @@ export default function SheetsSettingsPage() {
             Enter the Google Sheet ID (from the URL) and optionally the tab name
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <CardContent className="space-y-4 pt-5 pb-5 sm:pt-6 sm:pb-6">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Sheet ID</Label>
               <Input
@@ -116,7 +116,7 @@ export default function SheetsSettingsPage() {
       <div className="space-y-3">
         {syncs.map((sync) => (
           <Card key={sync.id}>
-            <CardContent className="flex items-center justify-between pt-6">
+            <CardContent className="flex items-center justify-between pt-5 pb-5 sm:pt-6 sm:pb-6">
               <div>
                 <p className="font-medium font-mono text-sm">
                   {sync.sheet_id}

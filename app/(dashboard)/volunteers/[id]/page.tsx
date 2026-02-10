@@ -97,7 +97,7 @@ export default function VolunteerProfilePage() {
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Total Drives</p>
             <p className="text-2xl font-bold">
               {volunteer.total_drives_attended}
@@ -105,19 +105,19 @@ export default function VolunteerProfilePage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Assignments</p>
             <p className="text-2xl font-bold">{totalAssignments}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Attendance Rate</p>
             <p className="text-2xl font-bold">{attendanceRate}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Top Duty</p>
             <p className="text-2xl font-bold">
               {Object.entries(dutyFrequency).sort(

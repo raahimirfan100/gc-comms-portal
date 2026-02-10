@@ -90,15 +90,15 @@ export default function RemindersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">Reminders</h1>
           <p className="text-muted-foreground">
             Configure WhatsApp reminders for this drive. Variables: {"{name}"},{" "}
             {"{duty}"}, {"{drive_name}"}, {"{sunset_time}"}, {"{location}"}
           </p>
         </div>
-        <Button onClick={addReminder}>
+        <Button className="self-start sm:self-auto" onClick={addReminder}>
           <Plus className="mr-2 h-4 w-4" />
           Add Reminder
         </Button>
@@ -107,11 +107,11 @@ export default function RemindersPage() {
       <div className="space-y-4">
         {reminders.map((r) => (
           <Card key={r.id}>
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+            <CardContent className="space-y-3 pt-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-3">
                   <Badge variant="outline">{r.reminder_type}</Badge>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Label className="text-sm">Hours before sunset:</Label>
                     <Input
                       type="number"

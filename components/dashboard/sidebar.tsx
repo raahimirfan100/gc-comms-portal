@@ -32,13 +32,13 @@ const settingsNav = [
   { name: "Alerts", href: "/settings/alerts" },
 ];
 
-export function Sidebar() {
+function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const isSeasonsPage = pathname === "/seasons";
   const isSettingsOpen = pathname.startsWith("/settings") && !isSeasonsPage;
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r bg-card">
+    <>
       <div className="flex h-16 items-center gap-2 border-b px-6">
         <Moon className="h-6 w-6 text-primary" />
         <span className="text-lg font-bold">Grand Citizens</span>
@@ -52,6 +52,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive
@@ -68,6 +69,7 @@ export function Sidebar() {
         <div className="pt-4">
           <Link
             href="/settings/assignment"
+            onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               isSettingsOpen
@@ -92,6 +94,7 @@ export function Sidebar() {
                   <Link
                     key={item.name}
                     href={item.href}
+                    onClick={onNavigate}
                     className={cn(
                       "block rounded-md px-3 py-1.5 text-sm transition-colors",
                       isActive
@@ -107,6 +110,26 @@ export function Sidebar() {
           )}
         </div>
       </nav>
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden h-full w-64 flex-col border-r bg-card lg:flex">
+      <SidebarInner />
     </aside>
+  );
+}
+
+export function MobileSidebar({
+  onNavigate,
+}: {
+  onNavigate?: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col border-r bg-card">
+      <SidebarInner onNavigate={onNavigate} />
+    </div>
   );
 }

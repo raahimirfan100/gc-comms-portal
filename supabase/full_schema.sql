@@ -1,3 +1,10 @@
+-- NOTE:
+-- This file is intended to be run once on a fresh database/schema
+-- (for example when you first provision your Supabase project).
+-- Do NOT re-run this after the schema already exists or after
+-- running clear_all_data.sql. To reset data + restore defaults,
+-- run clear_all_data.sql and then reseed_defaults.sql instead.
+
 -- Migration 1: Enable required Postgres extensions
 create extension if not exists "moddatetime" with schema extensions;
 -- Migration 2: Create all 7 enum types
@@ -54,8 +61,11 @@ create table public.drives (
   name text not null,
   drive_date date not null,
   daig_count integer not null default 0,
+  volunteer_target integer,
   location_name text,
   location_address text,
+  location_lat double precision,
+  location_lng double precision,
   sunset_time time,
   sunset_source text,
   iftaar_time time,
@@ -68,6 +78,12 @@ create table public.drives (
 create index drives_season_id_idx on public.drives (season_id);
 create index drives_drive_date_idx on public.drives (drive_date);
 
+alter table public.drives
+  add constraint drives_location_lat_check
+    check (location_lat is null or (location_lat >= -90 and location_lat <= 90)),
+  add constraint drives_location_lng_check
+    check (location_lng is null or (location_lng >= -180 and location_lng <= 180));
+
 create trigger handle_drives_updated_at
   before update on public.drives
   for each row
@@ -77,6 +93,7 @@ create table public.duties (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique,
+  description text,
   display_order integer not null default 0,
   gender_restriction public.gender,
   is_active boolean not null default true,

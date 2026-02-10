@@ -18,7 +18,7 @@
     --muted-foreground: 0 0% 45.1%;
     --accent: 0 0% 96.1%;
     --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 72% 58%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
@@ -45,7 +45,7 @@
     --muted-foreground: 0 0% 63.9%;
     --accent: 0 0% 14.9%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
@@ -64,6 +64,118 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .toaster [data-sonner-toast] {
+    border-radius: var(--radius);
+    border-width: 1px;
+    border-style: solid;
+    border-color: hsl(var(--border));
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.3),
+      0 4px 6px -4px rgb(0 0 0 / 0.3);
+  }
+
+  .toaster [data-sonner-toast][data-type="success"] {
+    border-color: hsl(142 71% 35%);
+    background-image: linear-gradient(
+      to right,
+      hsl(142 76% 36% / 0.08),
+      transparent
+    );
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.3),
+      0 4px 6px -4px rgb(0 0 0 / 0.3),
+      0 0 0 1px hsl(142 71% 40% / 0.6);
+  }
+
+  .toaster [data-sonner-toast][data-type="success"] svg {
+    color: hsl(142 71% 35%);
+  }
+
+  .toaster [data-sonner-toast][data-type="error"] {
+    border-color: hsl(0 72% 58%);
+    background-image: linear-gradient(
+      to right,
+      hsl(0 72% 58% / 0.08),
+      transparent
+    );
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.3),
+      0 4px 6px -4px rgb(0 0 0 / 0.3),
+      0 0 0 1px hsl(0 72% 58% / 0.6);
+  }
+
+  .toaster [data-sonner-toast][data-type="error"] svg {
+    color: hsl(0 72% 58%);
+  }
+
+  .toaster [data-sonner-toast][data-type="warning"] {
+    border-color: hsl(38 92% 50%);
+    background-image: linear-gradient(
+      to right,
+      hsl(48 96% 53% / 0.08),
+      transparent
+    );
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.3),
+      0 4px 6px -4px rgb(0 0 0 / 0.3),
+      0 0 0 1px hsl(38 92% 55% / 0.6);
+  }
+
+  .toaster [data-sonner-toast][data-type="warning"] svg {
+    color: hsl(38 92% 50%);
+  }
+
+  .toaster [data-sonner-toast][data-type="info"] {
+    border-color: hsl(221 83% 53%);
+    background-image: linear-gradient(
+      to right,
+      hsl(217 91% 60% / 0.08),
+      transparent
+    );
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.3),
+      0 4px 6px -4px rgb(0 0 0 / 0.3),
+      0 0 0 1px hsl(221 83% 60% / 0.6);
+  }
+
+  .toaster [data-sonner-toast][data-type="info"] svg {
+    color: hsl(221 83% 53%);
+  }
+
+  /* Google Places Autocomplete dropdown styling */
+  .pac-container {
+    border-radius: var(--radius) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    background-color: hsl(var(--popover)) !important;
+    color: hsl(var(--popover-foreground)) !important;
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.3),
+      0 4px 6px -4px rgb(0 0 0 / 0.3) !important;
+    font-size: 0.875rem !important;
+    z-index: 9999 !important;
+  }
+
+  .pac-item {
+    padding: 0.45rem 0.75rem !important;
+    border-top: 1px solid hsl(var(--border)) !important;
+    background-color: hsl(var(--popover)) !important;
+    color: hsl(var(--popover-foreground)) !important;
+  }
+
+  .pac-item:hover {
+    background-color: hsl(var(--accent)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+  }
+
+  .pac-item-query {
+    font-weight: 500 !important;
+    color: hsl(var(--accent-foreground)) !important;
   }
 }
 

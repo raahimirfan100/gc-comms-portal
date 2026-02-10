@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
@@ -140,7 +140,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
@@ -151,7 +151,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Utensils className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
@@ -162,7 +162,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Award className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Completed</span>
