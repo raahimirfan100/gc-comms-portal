@@ -25,6 +25,7 @@ const navigation = [
 
 const settingsNav = [
   { name: "Assignment", href: "/settings/assignment" },
+  { name: "Sign-up Form", href: "/settings/signup-form" },
   { name: "WhatsApp", href: "/settings/whatsapp" },
   { name: "Google Sheets", href: "/settings/sheets" },
   { name: "AI Calling", href: "/settings/calling" },

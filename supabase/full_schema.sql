@@ -554,4 +554,8 @@ insert into public.app_config (key, value, description) values
   ('alerts', '{
     "notify_admins": true,
     "deficit_threshold_percent": 20
-  }'::jsonb, 'Alert and notification thresholds');
+  }'::jsonb, 'Alert and notification thresholds'),
+  ('signup_form_window', '{
+    "mode": "next_n_days",
+    "days": 7
+  }'::jsonb, 'Volunteer sign-up form: which drives to show');
