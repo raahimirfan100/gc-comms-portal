@@ -22,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormField } from "@/components/ui/form-field";
+import { FormActions } from "@/components/ui/form-actions";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -96,19 +98,22 @@ export default function NewDrivePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Drive Name</Label>
+            <FormField
+              label="Drive Name"
+              htmlFor="name"
+              required
+              description="Give this drive a clear, descriptive name."
+            >
               <Input
                 id="name"
                 name="name"
                 placeholder="e.g., Iftaar Drive #1 - Saddar"
                 required
               />
-            </div>
+            </FormField>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="drive_date">Date</Label>
+              <FormField label="Date" htmlFor="drive_date" required>
                 <Input
                   id="drive_date"
                   name="drive_date"
@@ -117,9 +122,8 @@ export default function NewDrivePage() {
                   onChange={(e) => handleDateChange(e.target.value)}
                   required
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="daig_count">Daig Count</Label>
+              </FormField>
+              <FormField label="Daig Count" htmlFor="daig_count" required>
                 <Input
                   id="daig_count"
                   name="daig_count"
@@ -128,17 +132,21 @@ export default function NewDrivePage() {
                   placeholder="0"
                   required
                 />
-              </div>
+              </FormField>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="sunset_time">
-                  Sunset Time
-                  {fetchingSunset && (
-                    <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />
-                  )}
-                </Label>
+              <FormField
+                label={
+                  <>
+                    Sunset Time
+                    {fetchingSunset && (
+                      <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />
+                    )}
+                  </>
+                }
+                htmlFor="sunset_time"
+              >
                 <Input
                   id="sunset_time"
                   type="time"
@@ -148,9 +156,8 @@ export default function NewDrivePage() {
                     setSunsetSource("manual");
                   }}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+              </FormField>
+              <FormField label="Status" htmlFor="status">
                 <Select name="status" defaultValue="draft">
                   <SelectTrigger>
                     <SelectValue />
@@ -160,29 +167,35 @@ export default function NewDrivePage() {
                     <SelectItem value="open">Open</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </FormField>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="location_name">Location Name</Label>
+            <FormField
+              label="Location Name"
+              htmlFor="location_name"
+              description="Where will the drive take place?"
+            >
               <Input
                 id="location_name"
                 name="location_name"
                 placeholder="e.g., Saddar, Empress Market"
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="location_address">Location Address</Label>
+            <FormField
+              label="Location Address"
+              htmlFor="location_address"
+              description="Add any additional details to help volunteers find the location."
+            >
               <Textarea
                 id="location_address"
                 name="location_address"
                 placeholder="Full address..."
                 rows={2}
               />
-            </div>
+            </FormField>
 
-            <div className="flex gap-3 pt-4">
+            <FormActions className="pt-4">
               <Button type="submit" disabled={loading || !seasonId}>
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -196,7 +209,7 @@ export default function NewDrivePage() {
               >
                 Cancel
               </Button>
-            </div>
+            </FormActions>
           </form>
         </CardContent>
       </Card>

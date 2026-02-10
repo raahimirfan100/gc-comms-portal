@@ -1,22 +1,36 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
-import { MapPin, Calendar, Utensils, Sun, Loader2 } from "lucide-react";
+import { MapPin, Calendar, Utensils, Sun, Loader2, Trash2 } from "lucide-react";
 import { DriveStatusControl } from "./drive-status-control";
+import { deleteDrive } from "../actions";
+import { toast } from "sonner";
 
 export default function DriveDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const supabase = createClient();
   const [drive, setDrive] = useState<any>(null);
   const [driveDuties, setDriveDuties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{ assignmentCount: number; availabilityCount: number } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -40,6 +54,36 @@ export default function DriveDetailPage() {
     }
     load();
   }, [id]);
+
+  async function openDeleteDialog() {
+    setDeleteOpen(true);
+    const { count: assignmentCount } = await supabase
+      .from("assignments")
+      .select("*", { count: "exact", head: true })
+      .eq("drive_id", id);
+    const { count: availabilityCount } = await supabase
+      .from("volunteer_availability")
+      .select("*", { count: "exact", head: true })
+      .eq("drive_id", id);
+    setDeleteInfo({
+      assignmentCount: assignmentCount || 0,
+      availabilityCount: availabilityCount || 0,
+    });
+  }
+
+  async function handleDeleteDrive() {
+    setDeleting(true);
+    const result = await deleteDrive(id);
+    setDeleting(false);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Drive deleted");
+      router.push("/drives");
+    }
+    setDeleteOpen(false);
+    setDeleteInfo(null);
+  }
 
   if (loading) {
     return (
@@ -77,7 +121,12 @@ export default function DriveDetailPage() {
             {drive.seasons?.name}
           </p>
         </div>
-        <DriveStatusControl driveId={drive.id} currentStatus={drive.status} />
+        <div className="flex items-center gap-2">
+          <DriveStatusControl driveId={drive.id} currentStatus={drive.status} />
+          <Button variant="destructive" size="icon" onClick={openDeleteDialog}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -186,6 +235,44 @@ export default function DriveDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Drive Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={(open) => { if (!open) { setDeleteOpen(false); setDeleteInfo(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Drive</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{drive.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteInfo && (
+            <div className="space-y-2 text-sm">
+              {deleteInfo.assignmentCount > 0 && (
+                <p className="text-destructive">
+                  {deleteInfo.assignmentCount} volunteer assignment{deleteInfo.assignmentCount !== 1 ? "s" : ""} will be removed.
+                </p>
+              )}
+              {deleteInfo.availabilityCount > 0 && (
+                <p className="text-destructive">
+                  {deleteInfo.availabilityCount} volunteer sign-up{deleteInfo.availabilityCount !== 1 ? "s" : ""} will be removed.
+                </p>
+              )}
+              {deleteInfo.assignmentCount === 0 && deleteInfo.availabilityCount === 0 && (
+                <p className="text-muted-foreground">This drive has no volunteer assignments or sign-ups.</p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDeleteOpen(false); setDeleteInfo(null); }}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteDrive} disabled={deleting}>
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Drive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

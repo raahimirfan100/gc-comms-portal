@@ -12,9 +12,11 @@ import {
   Megaphone,
   ChevronDown,
   Moon,
+  MoonStar,
 } from "lucide-react";
 
 const navigation = [
+  { name: "Seasons", href: "/seasons", icon: MoonStar },
   { name: "Drives", href: "/drives", icon: CalendarDays },
   { name: "Volunteers", href: "/volunteers", icon: Users },
   { name: "Duties", href: "/duties", icon: ClipboardList },
@@ -22,7 +24,6 @@ const navigation = [
 ];
 
 const settingsNav = [
-  { name: "General", href: "/settings/general" },
   { name: "Assignment", href: "/settings/assignment" },
   { name: "WhatsApp", href: "/settings/whatsapp" },
   { name: "Google Sheets", href: "/settings/sheets" },
@@ -33,7 +34,8 @@ const settingsNav = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const isSettingsOpen = pathname.startsWith("/settings");
+  const isSeasonsPage = pathname === "/seasons";
+  const isSettingsOpen = pathname.startsWith("/settings") && !isSeasonsPage;
 
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-card">
@@ -65,7 +67,7 @@ export function Sidebar() {
 
         <div className="pt-4">
           <Link
-            href="/settings/general"
+            href="/settings/assignment"
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               isSettingsOpen
