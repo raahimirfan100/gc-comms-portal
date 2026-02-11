@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { cn, normalizePhone, formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +51,6 @@ type VolunteerPrefill = {
 type Step = 1 | 2 | 3;
 
 export default function VolunteerRegisterPage() {
-  const supabase = createClient();
   const [step, setStep] = useState<Step>(1);
   const [phone, setPhone] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
@@ -145,58 +143,32 @@ export default function VolunteerRegisterPage() {
     if (selectedDrives.length === 0) return;
     setLoading(true);
 
-    const { data: volunteerRow, error: volError } = await supabase
-      .from("volunteers")
-      .upsert(
-        {
-          phone,
-          name: name.trim(),
-          email: email.trim() || null,
-          gender: gender as "male" | "female",
-          organization: organization.trim() || null,
-          source: "in_app_form" as const,
-        },
-        { onConflict: "phone" },
-      )
-      .select()
-      .single();
-
-    if (volError || !volunteerRow) {
-      setLoading(false);
-      return;
-    }
-
-    for (const driveId of selectedDrives) {
-      await supabase
-        .from("volunteer_availability")
-        .upsert(
-          {
-            volunteer_id: volunteerRow.id,
-            drive_id: driveId,
-            source: "in_app_form" as const,
-          },
-          { onConflict: "volunteer_id,drive_id" },
-        );
-    }
-
-    const res = await fetch("/api/public/auto-assign", {
+    const res = await fetch("/api/public/volunteer-register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        volunteerId: volunteerRow.id,
+        phone,
+        name: name.trim(),
+        email: email.trim() || null,
+        gender: gender as "male" | "female",
+        organization: organization.trim() || null,
         driveIds: selectedDrives,
       }),
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.assignments?.length > 0) {
-        setAssignmentInfo(
-          data.assignments
-            .map((a: { drive: string; duty: string }) => `${a.drive}: ${a.duty}`)
-            .join("\n"),
-        );
-      }
+    if (!res.ok) {
+      setLoading(false);
+      return;
+    }
+
+    const data = await res.json();
+
+    if (data.assignments?.length > 0) {
+      setAssignmentInfo(
+        data.assignments
+          .map((a: { drive: string; duty: string }) => `${a.drive}: ${a.duty}`)
+          .join("\n"),
+      );
     }
 
     setLoading(false);
@@ -383,6 +355,7 @@ export default function VolunteerRegisterPage() {
                     <div className="space-y-3">
                       {drives.map((drive) => {
                         const isSelected = selectedDrives.includes(drive.id);
+                        const isExisting = existingDriveIds.includes(drive.id);
 
                         const destination =
                           drive.location_lat != null &&
@@ -414,7 +387,11 @@ export default function VolunteerRegisterPage() {
                                 ? "border-primary bg-primary/5"
                                 : "hover:border-primary/40",
                             )}
-                            onClick={() => toggleDrive(drive.id)}
+                            onClick={() => {
+                              if (!isExisting) {
+                                toggleDrive(drive.id);
+                              }
+                            }}
                           >
                             <CardContent className="px-3 py-2 md:px-4 md:py-3">
                               <div className="flex flex-col gap-2 md:flex-row">
@@ -467,9 +444,12 @@ export default function VolunteerRegisterPage() {
                                     >
                                       <Checkbox
                                         checked={isSelected}
-                                        onCheckedChange={() =>
-                                          toggleDrive(drive.id)
-                                        }
+                                        disabled={isExisting}
+                                        onCheckedChange={() => {
+                                          if (!isExisting) {
+                                            toggleDrive(drive.id);
+                                          }
+                                        }}
                                       />
                                       <span className="text-xs font-medium">
                                         I&apos;ll attend
