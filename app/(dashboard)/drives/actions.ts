@@ -259,3 +259,66 @@ export async function fetchSunsetTime(date: string): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Checks and updates drive statuses based on their drive_date:
+ * - If drive is "open" (scheduled) and drive_date is today, set to "in_progress"
+ * - If drive is "in_progress" and drive_date is before today, set to "completed"
+ * Only updates drives that are not in "draft" (planning) status.
+ */
+export async function checkAndUpdateDriveStatuses() {
+  const supabase = await createClient();
+  
+  // Get today's date in YYYY-MM-DD format (using local date, which should match drive_date format)
+  const today = new Date().toISOString().split("T")[0];
+  
+  // Get all drives that are not draft and not cancelled
+  const { data: drives, error: fetchError } = await supabase
+    .from("drives")
+    .select("id, status, drive_date")
+    .in("status", ["open", "in_progress"])
+    .order("drive_date", { ascending: true });
+  
+  if (fetchError) {
+    return { error: fetchError.message };
+  }
+  
+  if (!drives || drives.length === 0) {
+    return { success: true, updated: 0 };
+  }
+  
+  let updatedCount = 0;
+  
+  for (const drive of drives) {
+    // Extract date part (handle both date strings and timestamps)
+    const driveDate = drive.drive_date.includes("T") 
+      ? drive.drive_date.split("T")[0] 
+      : drive.drive_date;
+    
+    // Open → In Progress: if drive_date is today
+    if (drive.status === "open" && driveDate === today) {
+      const { error } = await supabase
+        .from("drives")
+        .update({ status: "in_progress" })
+        .eq("id", drive.id);
+      
+      if (!error) updatedCount++;
+    }
+    
+    // In Progress → Completed: if drive_date is before today
+    if (drive.status === "in_progress" && driveDate < today) {
+      const { error } = await supabase
+        .from("drives")
+        .update({ status: "completed" })
+        .eq("id", drive.id);
+      
+      if (!error) updatedCount++;
+    }
+  }
+  
+  if (updatedCount > 0) {
+    revalidatePath("/drives");
+  }
+  
+  return { success: true, updated: updatedCount };
+}

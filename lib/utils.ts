@@ -50,17 +50,17 @@ export function formatTime(timeStr: string | null): string {
 
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-800",
-    open: "bg-blue-100 text-blue-800",
-    in_progress: "bg-yellow-100 text-yellow-800",
-    completed: "bg-green-100 text-green-800",
-    cancelled: "bg-red-100 text-red-800",
-    assigned: "bg-blue-100 text-blue-800",
-    confirmed: "bg-green-100 text-green-800",
-    en_route: "bg-yellow-100 text-yellow-800",
-    arrived: "bg-emerald-100 text-emerald-800",
-    no_show: "bg-red-100 text-red-800",
-    waitlisted: "bg-orange-100 text-orange-800",
+    draft: "bg-gray-100 text-gray-800 hover:bg-gray-200/90 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700/90",
+    open: "bg-blue-100 text-blue-800 hover:bg-blue-200/90 dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900/70",
+    in_progress: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200/90 dark:bg-yellow-950/60 dark:text-yellow-300 dark:hover:bg-yellow-900/70",
+    completed: "bg-green-100 text-green-800 hover:bg-green-200/90 dark:bg-green-950/60 dark:text-green-300 dark:hover:bg-green-900/70",
+    cancelled: "bg-red-100 text-red-800 hover:bg-red-200/90 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-900/70",
+    assigned: "bg-blue-100 text-blue-800 hover:bg-blue-200/90 dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900/70",
+    confirmed: "bg-green-100 text-green-800 hover:bg-green-200/90 dark:bg-green-950/60 dark:text-green-300 dark:hover:bg-green-900/70",
+    en_route: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200/90 dark:bg-yellow-950/60 dark:text-yellow-300 dark:hover:bg-yellow-900/70",
+    arrived: "bg-emerald-100 text-emerald-800 hover:bg-emerald-200/90 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/70",
+    no_show: "bg-red-100 text-red-800 hover:bg-red-200/90 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-900/70",
+    waitlisted: "bg-orange-100 text-orange-800 hover:bg-orange-200/90 dark:bg-orange-950/60 dark:text-orange-300 dark:hover:bg-orange-900/70",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return colors[status] || "bg-gray-100 text-gray-800 hover:bg-gray-200/90 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700/90";
 }

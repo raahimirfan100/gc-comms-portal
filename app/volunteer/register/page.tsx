@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { normalizePhone } from "@/lib/utils";
+import { cn, normalizePhone, formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,13 +21,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Moon, Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
+import {
+  Moon,
+  Loader2,
+  CheckCircle2,
+  ArrowLeft,
+  Navigation,
+} from "lucide-react";
 
 type Drive = {
   id: string;
   name: string;
   drive_date: string;
   location_name: string | null;
+  location_address: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
+  sunset_time: string | null;
+  iftaar_time: string | null;
+  notes: string | null;
 };
 
 type VolunteerPrefill = {
@@ -43,6 +55,7 @@ export default function VolunteerRegisterPage() {
   const supabase = createClient();
   const [step, setStep] = useState<Step>(1);
   const [phone, setPhone] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [drives, setDrives] = useState<Drive[]>([]);
@@ -59,9 +72,17 @@ export default function VolunteerRegisterPage() {
   const [assignmentInfo, setAssignmentInfo] = useState("");
   const [noDrivesAvailable, setNoDrivesAvailable] = useState(false);
 
-  async function handlePhoneContinue(e: React.FormEvent) {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("gc_volunteer_phone");
+    if (saved) {
+      setPhoneInput(saved);
+    }
+  }, []);
+
+  async function handlePhoneContinue(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const raw = (e.currentTarget.elements.namedItem("phone") as HTMLInputElement)?.value?.trim();
+    const raw = phoneInput.trim();
     if (!raw) return;
     setPhoneError("");
     setPhoneLoading(true);
@@ -71,6 +92,10 @@ export default function VolunteerRegisterPage() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load");
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("gc_volunteer_phone", raw);
+      }
       const driveList = data.drives ?? [];
       if (driveList.length === 0) {
         setNoDrivesAvailable(true);
@@ -242,6 +267,8 @@ export default function VolunteerRegisterPage() {
                       id="phone"
                       name="phone"
                       placeholder="03XX-XXXXXXX"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value)}
                       required
                       autoFocus
                     />
@@ -353,33 +380,136 @@ export default function VolunteerRegisterPage() {
                 <>
                   <div className="space-y-3">
                     <Label>Available dates *</Label>
-                    <div className="space-y-2">
-                      {drives.map((drive) => (
-                        <label
-                          key={drive.id}
-                          className="flex cursor-pointer items-center gap-3 rounded-md border p-3 hover:bg-accent"
-                        >
-                          <Checkbox
-                            checked={selectedDrives.includes(drive.id)}
-                            onCheckedChange={() => toggleDrive(drive.id)}
-                          />
-                          <div>
-                            <div className="font-medium">{drive.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {new Date(drive.drive_date).toLocaleDateString(
-                                "en-PK",
-                                {
-                                  weekday: "long",
-                                  day: "numeric",
-                                  month: "long",
-                                },
-                              )}
-                              {drive.location_name &&
-                                ` — ${drive.location_name}`}
-                            </div>
-                          </div>
-                        </label>
-                      ))}
+                    <div className="space-y-3">
+                      {drives.map((drive) => {
+                        const isSelected = selectedDrives.includes(drive.id);
+
+                        const destination =
+                          drive.location_lat != null &&
+                            drive.location_lng != null
+                            ? `${drive.location_lat},${drive.location_lng}`
+                            : `${drive.location_name ?? ""} ${drive.location_address ?? ""
+                            }`;
+
+                        const mapsUrl =
+                          destination.trim().length > 0
+                            ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                              destination.trim(),
+                            )}`
+                            : null;
+
+                        const staticMapUrl =
+                          drive.location_lat != null &&
+                            drive.location_lng != null &&
+                            process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+                            ? `https://maps.googleapis.com/maps/api/staticmap?center=${drive.location_lat},${drive.location_lng}&zoom=15&size=300x200&scale=2&markers=color:red%7C${drive.location_lat},${drive.location_lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+                            : null;
+
+                        return (
+                          <Card
+                            key={drive.id}
+                            className={cn(
+                              "cursor-pointer border-2 transition-colors",
+                              isSelected
+                                ? "border-primary bg-primary/5"
+                                : "hover:border-primary/40",
+                            )}
+                            onClick={() => toggleDrive(drive.id)}
+                          >
+                            <CardContent className="px-3 py-2 md:px-4 md:py-3">
+                              <div className="flex flex-col gap-2 md:flex-row">
+                                {staticMapUrl && (
+                                  <div className="overflow-hidden rounded-md border bg-muted/30 md:w-1/3">
+                                    <div className="relative h-24 w-full md:h-28 group">
+                                      <img
+                                        src={staticMapUrl}
+                                        alt={drive.location_name ?? drive.name}
+                                        className="h-full w-full object-cover"
+                                      />
+                                      {mapsUrl && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.open(mapsUrl, "_blank");
+                                          }}
+                                          className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+                                        >
+                                          <span className="inline-flex items-center gap-1 rounded-full bg-background/80 px-3 py-1 text-xs font-medium">
+                                            <Navigation className="h-3 w-3" />
+                                            Get directions
+                                          </span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="flex-1 space-y-2">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <div className="text-sm font-semibold">
+                                        {drive.name}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">
+                                        {new Date(
+                                          drive.drive_date,
+                                        ).toLocaleDateString("en-PK", {
+                                          weekday: "long",
+                                          day: "numeric",
+                                          month: "long",
+                                        })}
+                                      </p>
+                                    </div>
+                                    <div
+                                      className="flex items-center gap-2"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() =>
+                                          toggleDrive(drive.id)
+                                        }
+                                      />
+                                      <span className="text-xs font-medium">
+                                        I&apos;ll attend
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                    {drive.sunset_time && (
+                                      <span className="rounded-full bg-muted px-2 py-0.5">
+                                        Sunset: {formatTime(drive.sunset_time)}
+                                      </span>
+                                    )}
+                                    {drive.iftaar_time && (
+                                      <span className="rounded-full bg-muted px-2 py-0.5">
+                                        Iftaar: {formatTime(drive.iftaar_time)}
+                                      </span>
+                                    )}
+
+                                  </div>
+
+                                  {drive.location_name && (
+                                    <div className="space-y-1 text-sm">
+                                      <div className="font-small">
+                                        {drive.location_address}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {drive.notes && (
+                                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                                      {drive.notes}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
 

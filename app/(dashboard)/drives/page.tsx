@@ -1,18 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   Plus,
   MapPin,
@@ -20,18 +14,92 @@ import {
   Utensils,
   Loader2,
   AlertTriangle,
+  CheckCircle2,
+  MoonStar,
+  PlayCircle,
+  XCircle,
+  Users,
+  Sun,
 } from "lucide-react";
 import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
+import { checkAndUpdateDriveStatuses } from "./actions";
+
+const LocationMap = dynamic(
+  () =>
+    import("@/components/dashboard/location-map").then((m) => m.LocationMap),
+  { ssr: false },
+);
+
+type DriveStatus = "draft" | "open" | "in_progress" | "completed" | "cancelled";
+
+function getStatusBadgeConfig(status: string): {
+  label: string;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  iconClass: string;
+  borderClass: string;
+} {
+  const statusMap: Record<
+    string,
+    {
+      label: string;
+      Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+      iconClass: string;
+      borderClass: string;
+    }
+  > = {
+    draft: {
+      label: "Planning",
+      Icon: MoonStar,
+      iconClass: "text-amber-500",
+      borderClass: "border-amber-500/50",
+    },
+    open: {
+      label: "Scheduled",
+      Icon: Users,
+      iconClass: "text-emerald-500",
+      borderClass: "border-emerald-500/50",
+    },
+    in_progress: {
+      label: "In progress",
+      Icon: PlayCircle,
+      iconClass: "text-sky-500",
+      borderClass: "border-sky-500/50",
+    },
+    completed: {
+      label: "Completed",
+      Icon: CheckCircle2,
+      iconClass: "text-emerald-500",
+      borderClass: "border-emerald-500/50",
+    },
+    cancelled: {
+      label: "Cancelled",
+      Icon: XCircle,
+      iconClass: "text-red-500",
+      borderClass: "border-red-500/50",
+    },
+  };
+
+  return (
+    statusMap[status] ?? {
+      label: status.replace("_", " "),
+      Icon: Calendar,
+      iconClass: "text-muted-foreground",
+      borderClass: "border-muted-foreground/50",
+    }
+  );
+}
 
 type DriveWithDuties = {
   id: string;
   name: string;
   drive_date: string;
   location_name: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   daig_count: number;
   sunset_time: string | null;
   status: string;
-   volunteer_target: number | null;
+  volunteer_target: number | null;
   drive_duties: Array<{
     id: string;
     calculated_capacity: number;
@@ -48,6 +116,9 @@ export default function DrivesPage() {
 
   useEffect(() => {
     async function load() {
+      // Check and update drive statuses based on date
+      await checkAndUpdateDriveStatuses();
+
       const { data: activeSeason } = await supabase
         .from("seasons")
         .select("id")
@@ -150,55 +221,135 @@ export default function DrivesPage() {
             const capacityMismatch =
               hasTarget && drive.volunteer_target !== totalCapacity;
 
+            const statusConfig = getStatusBadgeConfig(drive.status);
+            const StatusIcon = statusConfig.Icon;
+
+            const hasLocation =
+              typeof drive.location_lat === "number" &&
+              typeof drive.location_lng === "number";
+
+            const isInProgress = drive.status === "in_progress";
+            const isCompleted = drive.status === "completed";
+
             return (
               <Link key={drive.id} href={`/drives/${drive.id}`}>
-                <Card className="transition-shadow hover:shadow-md cursor-pointer">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{drive.name}</CardTitle>
-                      <Badge className={getStatusColor(drive.status)}>
-                        {drive.status.replace("_", " ")}
-                      </Badge>
-                    </div>
-                    <CardDescription className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {formatDate(drive.drive_date)}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {drive.location_name && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-3 w-3" />
-                        {drive.location_name}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="flex items-center gap-1">
-                        <Utensils className="h-3 w-3" />
-                        {drive.daig_count} daigs
-                      </span>
-                      {drive.sunset_time && (
-                        <span>Sunset: {formatTime(drive.sunset_time)}</span>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>
-                          {totalAssigned}/{totalCapacity} volunteers
-                        </span>
-                        <span>{fillPercent}%</span>
-                      </div>
-                      <Progress value={fillPercent} className="h-2" />
-                      {capacityMismatch && (
-                        <div className="mt-1 flex items-center gap-1 text-[11px] text-amber-400">
-                          <AlertTriangle className="h-3 w-3" />
-                          <span>
-                            Target {drive.volunteer_target}, capacity{" "}
-                            {totalCapacity}. You may need to override duty
-                            capacities.
-                          </span>
+                <Card
+                  className={`group cursor-pointer overflow-hidden rounded-2xl border shadow-sm transition-all ${
+                    isInProgress
+                      ? "border-sky-500/60 bg-sky-500/5 hover:border-sky-500/80 hover:shadow-lg hover:shadow-sky-500/20"
+                      : isCompleted
+                        ? "border-primary/5 bg-card/60 opacity-70 hover:border-primary/20 hover:opacity-90"
+                        : "border-primary/10 bg-card/90 hover:border-primary/40 hover:shadow-lg"
+                  }`}
+                >
+                  <CardContent className="p-0">
+                    {/* Map at top - clicks stay on map (open directions), don't navigate */}
+                    <div
+                      className="border-b border-border"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {hasLocation ? (
+                        <LocationMap
+                          lat={drive.location_lat}
+                          lng={drive.location_lng}
+                          readOnly
+                          compact
+                        />
+                      ) : (
+                        <div className="flex h-28 w-full items-center justify-center rounded-t-2xl border-b border-border bg-muted/30 text-xs text-muted-foreground">
+                          No location set
                         </div>
                       )}
+                    </div>
+
+                    <div className="space-y-2 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <CardTitle className="line-clamp-1 text-base font-semibold leading-tight">
+                            {drive.name}
+                          </CardTitle>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{formatDate(drive.drive_date)}</span>
+                            </span>
+                            {drive.location_name && (
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                <span className="max-w-[140px] truncate">
+                                  {drive.location_name}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                          {hasTarget && (
+                            <p className="text-[11px] text-muted-foreground">
+                              Target{" "}
+                              <span className="font-semibold">
+                                {drive.volunteer_target}
+                              </span>{" "}
+                              • Capacity{" "}
+                              <span className="font-semibold">
+                                {totalCapacity}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                        <Badge
+                          className={`flex shrink-0 items-center gap-1.5 border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${statusConfig.borderClass} ${getStatusColor(
+                            drive.status,
+                          )}`}
+                        >
+                          <StatusIcon
+                            className={`h-3 w-3 ${statusConfig.iconClass}`}
+                          />
+                          <span className="hidden sm:inline">
+                            {statusConfig.label}
+                          </span>
+                          <span className="sm:hidden">
+                            {statusConfig.label.split(" ")[0]}
+                          </span>
+                        </Badge>
+                      </div>
+
+                      {/* Concise inline row: Date • Sunset • Volunteers • Daigs */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+                        <span className="inline-flex items-center gap-1 font-medium">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          {formatDate(drive.drive_date)}
+                        </span>
+                        {drive.sunset_time && (
+                          <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <Sun className="h-3 w-3" />
+                            {formatTime(drive.sunset_time)}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 font-medium">
+                          <Users className="h-3 w-3 text-muted-foreground" />
+                          {totalAssigned}/{totalCapacity}
+                          <span className="text-muted-foreground font-normal">
+                            ({fillPercent}%)
+                          </span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 font-medium">
+                          <Utensils className="h-3 w-3 text-muted-foreground" />
+                          {drive.daig_count} daigs
+                        </span>
+                        {capacityMismatch && (
+                          <span className="inline-flex items-center gap-1 text-amber-400">
+                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                            <span>Target {drive.volunteer_target}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{
+                            width: `${Math.min(fillPercent, 100)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

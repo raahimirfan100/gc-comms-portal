@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { createDrive, fetchSunsetTime, getSuggestedVolunteerTarget } from "../actions";
+import { updateDrive, fetchSunsetTime, getSuggestedVolunteerTarget } from "../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,51 +37,13 @@ const LocationMap = dynamic(
   { ssr: false },
 );
 
-async function getNextAvailableDriveDateForSeason(
-  supabase: ReturnType<typeof createClient>,
-  season: { id: string; start_date: string; end_date: string },
-): Promise<string | null> {
-  const { data: drives } = await supabase
-    .from("drives")
-    .select("drive_date")
-    .eq("season_id", season.id)
-    .order("drive_date", { ascending: true });
-
-  const takenDates = new Set(
-    (drives ?? [])
-      .map((d: { drive_date: string | null }) => d.drive_date)
-      .filter((d): d is string => !!d),
-  );
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const start = new Date(season.start_date);
-  const end = new Date(season.end_date);
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-
-  let current = start < today ? today : start;
-
-  while (current <= end) {
-    const yyyy = current.getFullYear();
-    const mm = String(current.getMonth() + 1).padStart(2, "0");
-    const dd = String(current.getDate()).padStart(2, "0");
-    const iso = `${yyyy}-${mm}-${dd}`;
-    if (!takenDates.has(iso)) {
-      return iso;
-    }
-    current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
-  }
-
-  return null;
-}
-
-export default function NewDrivePage() {
+export default function EditDrivePage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [fetchingSunset, setFetchingSunset] = useState(false);
-  const [seasonId, setSeasonId] = useState("");
+  const [loadingDrive, setLoadingDrive] = useState(true);
   const [sunsetTime, setSunsetTime] = useState("");
   const [sunsetSource, setSunsetSource] = useState("aladhan");
   const [driveDate, setDriveDate] = useState("");
@@ -93,32 +55,54 @@ export default function NewDrivePage() {
   >(null);
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
+  const [driveName, setDriveName] = useState("");
+  const [locationName, setLocationName] = useState("");
+  const [locationAddress, setLocationAddress] = useState("");
+  const [notes, setNotes] = useState("");
+  const [status, setStatus] = useState("draft");
   const locationAddressRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    async function loadActiveSeason() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("seasons")
-        .select("id, start_date, end_date")
-        .eq("is_active", true)
+    async function loadDrive() {
+      const { data: drive, error } = await supabase
+        .from("drives")
+        .select("*")
+        .eq("id", id)
         .single();
-      if (!data) return;
 
-      setSeasonId(data.id);
-
-      if (data.start_date && data.end_date) {
-        const nextDate = await getNextAvailableDriveDateForSeason(
-          supabase,
-          data as { id: string; start_date: string; end_date: string },
-        );
-        if (nextDate) {
-          await handleDateChange(nextDate);
-        }
+      if (error || !drive) {
+        toast.error("Drive not found");
+        router.push("/drives");
+        return;
       }
+
+      if (drive.status !== "draft") {
+        toast.error("Only drives in draft status can be edited");
+        router.push(`/drives/${id}`);
+        return;
+      }
+
+      setDriveName(drive.name || "");
+      setDriveDate(drive.drive_date || "");
+      setSunsetTime(drive.sunset_time || "");
+      setSunsetSource(drive.sunset_source || "aladhan");
+      setDaigCount(String(drive.daig_count || 0));
+      setVolunteerCount(drive.volunteer_target ? String(drive.volunteer_target) : "");
+      setLocationName(drive.location_name || "");
+      setLocationAddress(drive.location_address || "");
+      setLocationLat(drive.location_lat);
+      setLocationLng(drive.location_lng);
+      setNotes(drive.notes || "");
+      setStatus(drive.status || "draft");
+
+      if (locationAddressRef.current) {
+        locationAddressRef.current.value = drive.location_address || "";
+      }
+
+      setLoadingDrive(false);
     }
-    loadActiveSeason();
-  }, []);
+    loadDrive();
+  }, [id]);
 
   // Auto-update volunteer target from duty capacity rules when daig count changes (unless manually edited)
   useEffect(() => {
@@ -158,18 +142,17 @@ export default function NewDrivePage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    formData.set("season_id", seasonId);
     formData.set("sunset_time", sunsetTime);
     formData.set("sunset_source", sunsetSource);
 
-    const result = await createDrive(formData);
+    const result = await updateDrive(id as string, formData);
     setLoading(false);
 
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success("Drive created successfully!");
-      router.push("/drives");
+      toast.success("Drive updated successfully!");
+      router.push(`/drives/${id}`);
     }
   }
 
@@ -217,12 +200,9 @@ export default function NewDrivePage() {
         setLocationLng(lng);
 
         const formatted = place.formatted_address;
-        if (
-          formatted &&
-          locationAddressRef.current &&
-          !locationAddressRef.current.value
-        ) {
+        if (formatted && locationAddressRef.current) {
           locationAddressRef.current.value = formatted;
+          setLocationAddress(formatted);
         }
       });
 
@@ -243,6 +223,14 @@ export default function NewDrivePage() {
     };
   }, []);
 
+  if (loadingDrive) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
@@ -250,14 +238,14 @@ export default function NewDrivePage() {
           <CardHeader className="px-4 pt-4 pb-2 sm:px-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <CardTitle>Create New Drive</CardTitle>
+                <CardTitle>Edit Drive</CardTitle>
                 <CardDescription>
-                  Set up an iftaar drive. Sunset time will be auto-fetched from
+                  Update drive details. Sunset time will be auto-fetched from
                   Aladhan API for Karachi.
                 </CardDescription>
               </div>
               <FormField className="w-auto self-start">
-                <Select name="status" defaultValue="draft">
+                <Select name="status" value={status} onValueChange={setStatus}>
                   <SelectTrigger className="bg-secondary/60">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -291,6 +279,8 @@ export default function NewDrivePage() {
                   id="name"
                   name="name"
                   placeholder="e.g., Iftaar Drive #1 - Saddar"
+                  value={driveName}
+                  onChange={(e) => setDriveName(e.target.value)}
                   required
                 />
               </FormField>
@@ -376,6 +366,8 @@ export default function NewDrivePage() {
                   id="location_name"
                   name="location_name"
                   placeholder="Askari 3"
+                  value={locationName}
+                  onChange={(e) => setLocationName(e.target.value)}
                 />
               </FormField>
 
@@ -389,6 +381,7 @@ export default function NewDrivePage() {
                   name="location_address"
                   placeholder="Full address..."
                   ref={locationAddressRef}
+                  defaultValue={locationAddress}
                 />
               </FormField>
 
@@ -397,7 +390,13 @@ export default function NewDrivePage() {
                 htmlFor="notes"
                 description="Private notes for coordinators (not shown to volunteers)."
               >
-                <Textarea id="notes" name="notes" rows={2} />
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  rows={2}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
               </FormField>
 
               <FormActions className="pt-4">
@@ -411,16 +410,16 @@ export default function NewDrivePage() {
                   name="location_lng"
                   value={locationLng ?? ""}
                 />
-                <Button type="submit" disabled={loading || !seasonId}>
+                <Button type="submit" disabled={loading}>
                   {loading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
-                  Create Drive
+                  Update Drive
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  onClick={() => router.push(`/drives/${id}`)}
                 >
                   Cancel
                 </Button>

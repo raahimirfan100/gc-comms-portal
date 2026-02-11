@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,10 +25,20 @@ import {
   Loader2,
   Trash2,
   AlertTriangle,
+  CheckCircle2,
+  MoonStar,
+  PlayCircle,
+  XCircle,
+  Users,
+  Pencil,
 } from "lucide-react";
 import { DriveStatusControl } from "./drive-status-control";
 import { deleteDrive } from "../actions";
 import { toast } from "sonner";
+import AssignmentsPage from "./assignments/page";
+import LiveDashboardPage from "./live/page";
+import RemindersPage from "./reminders/page";
+import CallCenterPage from "./calls/page";
 
 const LocationMap = dynamic(
   () =>
@@ -37,6 +47,67 @@ const LocationMap = dynamic(
     ),
   { ssr: false },
 );
+
+type DriveView = "overview" | "assignments" | "live" | "reminders" | "calls";
+
+type DriveStatus = "draft" | "open" | "in_progress" | "completed" | "cancelled";
+
+function getStatusBadgeConfig(status: string): {
+  label: string;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  iconClass: string;
+  borderClass: string;
+} {
+  const statusMap: Record<
+    string,
+    {
+      label: string;
+      Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+      iconClass: string;
+      borderClass: string;
+    }
+  > = {
+    draft: {
+      label: "Planning",
+      Icon: MoonStar,
+      iconClass: "text-amber-500",
+      borderClass: "border-amber-500/50",
+    },
+    open: {
+      label: "Scheduled",
+      Icon: Users,
+      iconClass: "text-emerald-500",
+      borderClass: "border-emerald-500/50",
+    },
+    in_progress: {
+      label: "In progress",
+      Icon: PlayCircle,
+      iconClass: "text-sky-500",
+      borderClass: "border-sky-500/50",
+    },
+    completed: {
+      label: "Completed",
+      Icon: CheckCircle2,
+      iconClass: "text-emerald-500",
+      borderClass: "border-emerald-500/50",
+    },
+    cancelled: {
+      label: "Cancelled",
+      Icon: XCircle,
+      iconClass: "text-red-500",
+      borderClass: "border-red-500/50",
+    },
+  };
+
+  return (
+    statusMap[status] ?? {
+      label: status.replace("_", " "),
+      Icon: Calendar,
+      iconClass: "text-muted-foreground",
+      borderClass: "border-muted-foreground/50",
+    }
+  );
+}
 
 export default function DriveDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +119,7 @@ export default function DriveDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteInfo, setDeleteInfo] = useState<{ assignmentCount: number; availabilityCount: number } | null>(null);
+  const [view, setView] = useState<DriveView>("overview");
 
   useEffect(() => {
     async function load() {
@@ -102,6 +174,12 @@ export default function DriveDetailPage() {
     setDeleteInfo(null);
   }
 
+  function handleStatusChange(newStatus: string) {
+    if (drive) {
+      setDrive({ ...drive, status: newStatus });
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -127,29 +205,215 @@ export default function DriveDetailPage() {
     typeof drive.volunteer_target === "number" && drive.volunteer_target > 0;
   const capacityMismatch =
     hasTarget && drive.volunteer_target !== totalCapacity;
+  const volunteerFillPercent =
+    totalCapacity > 0
+      ? Math.round((totalAssigned / totalCapacity) * 100)
+      : 0;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{drive.name}</h1>
-            <Badge className={getStatusColor(drive.status)}>
-              {drive.status.replace("_", " ")}
-            </Badge>
+      {/* Hero header */}
+      <section className="overflow-hidden rounded-2xl border border-primary/20 bg-card px-5 py-5 shadow-lg md:px-8 md:py-6">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-3 md:max-w-xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                {drive.name}
+              </h1>
+              {(() => {
+                const statusConfig = getStatusBadgeConfig(drive.status);
+                const StatusIcon = statusConfig.Icon;
+                return (
+                  <Badge
+                    className={`flex items-center gap-1.5 border px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide ${statusConfig.borderClass} ${getStatusColor(
+                      drive.status,
+                    )}`}
+                  >
+                    <StatusIcon className={`h-3 w-3 ${statusConfig.iconClass}`} />
+                    {statusConfig.label}
+                  </Badge>
+                );
+              })()}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {drive.seasons?.name && <span>{drive.seasons.name} • </span>}
+              {formatDate(drive.drive_date)}
+              {drive.location_name && <> • {drive.location_name}</>}
+            </p>
+            {hasTarget && (
+              <p className="text-xs text-muted-foreground">
+                Targeting{" "}
+                <span className="font-semibold">
+                  {drive.volunteer_target}
+                </span>{" "}
+                volunteers with a current duty capacity of{" "}
+                <span className="font-semibold">{totalCapacity}</span>.
+              </p>
+            )}
+            {(drive.location_name || drive.location_address) && (
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  <span>
+                    {drive.location_name}
+                    {drive.location_name && drive.location_address && " — "}
+                    {drive.location_address}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-          <p className="text-muted-foreground mt-1">
-            {drive.seasons?.name}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <DriveStatusControl driveId={drive.id} currentStatus={drive.status} />
-          <Button variant="destructive" size="icon" onClick={openDeleteDialog}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
 
+          <div className="grid gap-3 text-sm sm:grid-cols-3 md:text-xs lg:text-sm">
+            <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Date</span>
+                <Calendar className="h-3.5 w-3.5" />
+              </div>
+              <p className="mt-1 text-sm font-semibold">
+                {formatDate(drive.drive_date)}
+              </p>
+              {drive.sunset_time && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Sunset {formatTime(drive.sunset_time)}
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Volunteers</span>
+                <MapPin className="h-3.5 w-3.5" />
+              </div>
+              <p className="mt-1 text-sm font-semibold">
+                {totalAssigned}/{totalCapacity}
+              </p>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${Math.min(volunteerFillPercent, 100)}%` }}
+                />
+              </div>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {volunteerFillPercent}% of capacity filled
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Daigs</span>
+                <Utensils className="h-3.5 w-3.5" />
+              </div>
+              <p className="mt-1 text-sm font-semibold">
+                {drive.daig_count}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Adjust in Duty Board if capacity shifts
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Inline navigation */}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Drive views
+          </span>
+          <div className="flex flex-wrap gap-1.5 rounded-full bg-black/40 p-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "overview" ? "default" : "outline"}
+              className={`h-7 rounded-full px-3 text-xs font-medium ${
+                view === "overview"
+                  ? ""
+                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+              }`}
+              onClick={() => setView("overview")}
+            >
+              Overview
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "assignments" ? "default" : "outline"}
+              className={`h-7 rounded-full px-3 text-xs font-medium ${
+                view === "assignments"
+                  ? ""
+                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+              }`}
+              onClick={() => setView("assignments")}
+            >
+              Duty Board
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "live" ? "default" : "outline"}
+              className={`h-7 rounded-full px-3 text-xs font-medium ${
+                view === "live"
+                  ? ""
+                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+              }`}
+              onClick={() => setView("live")}
+            >
+              Live Dashboard
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "reminders" ? "default" : "outline"}
+              className={`h-7 rounded-full px-3 text-xs font-medium ${
+                view === "reminders"
+                  ? ""
+                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+              }`}
+              onClick={() => setView("reminders")}
+            >
+              Reminders
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "calls" ? "default" : "outline"}
+              className={`h-7 rounded-full px-3 text-xs font-medium ${
+                view === "calls"
+                  ? ""
+                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+              }`}
+              onClick={() => setView("calls")}
+            >
+              Call Center
+            </Button>
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <DriveStatusControl
+              driveId={drive.id}
+              currentStatus={drive.status}
+              onStatusChange={handleStatusChange}
+            />
+            {drive.status === "draft" && (
+              <Link href={`/drives/${id}/edit`}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 rounded-full"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={openDeleteDialog}
+              className="h-8 w-8 shrink-0 rounded-full"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Capacity warning */}
       {capacityMismatch && (
         <Card className="border-amber-500/60 bg-amber-500/5">
           <CardContent className="flex items-start gap-2 px-4 py-3 text-sm text-amber-400 sm:px-6 sm:py-4">
@@ -168,143 +432,114 @@ export default function DriveDetailPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6 pb-6">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Date</span>
-            </div>
-            <p className="mt-1 font-medium">{formatDate(drive.drive_date)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 pb-6">
-            <div className="flex items-center gap-2">
-              <Sun className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Sunset</span>
-            </div>
-            <p className="mt-1 font-medium">{formatTime(drive.sunset_time)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 pb-6">
-            <div className="flex items-center gap-2">
-              <Utensils className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Daigs</span>
-            </div>
-            <p className="mt-1 font-medium">{drive.daig_count}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 pb-6">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Volunteers</span>
-            </div>
-            <p className="mt-1 font-medium">
-              {totalAssigned}/{totalCapacity}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* View content */}
+      <section className="space-y-6">
+        {view === "overview" && (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)]">
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle>Duty capacity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {driveDuties.map((dd) => {
+                      const capacity =
+                        dd.manual_capacity_override ?? dd.calculated_capacity;
+                      const pct =
+                        capacity > 0
+                          ? Math.round((dd.current_assigned / capacity) * 100)
+                          : 0;
+                      const duty = dd.duties;
 
-      {drive.location_name && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4" />
-          {drive.location_name}
-          {drive.location_address && ` — ${drive.location_address}`}
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <Link href={`/drives/${id}/assignments`}>
-          <Button>Duty Board</Button>
-        </Link>
-        <Link href={`/drives/${id}/live`}>
-          <Button variant="outline">Live Dashboard</Button>
-        </Link>
-        <Link href={`/drives/${id}/reminders`}>
-          <Button variant="outline">Reminders</Button>
-        </Link>
-        <Link href={`/drives/${id}/calls`}>
-          <Button variant="outline">Call Center</Button>
-        </Link>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Duty Capacity Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {driveDuties.map((dd) => {
-                const capacity =
-                  dd.manual_capacity_override ?? dd.calculated_capacity;
-                const pct =
-                  capacity > 0
-                    ? Math.round((dd.current_assigned / capacity) * 100)
-                    : 0;
-                const duty = dd.duties;
-
-                return (
-                  <div key={dd.id} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium">
-                        {duty?.name}
-                        {duty?.gender_restriction && (
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            {duty.gender_restriction}
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {dd.current_assigned}/{capacity}
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-secondary">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${Math.min(pct, 100)}%` }}
-                      />
-                    </div>
+                      return (
+                        <div
+                          key={dd.id}
+                          className="rounded-lg border border-border/60 bg-background/40 p-3"
+                        >
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{duty?.name}</span>
+                              {duty?.gender_restriction && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-dashed text-xs uppercase"
+                                >
+                                  {duty.gender_restriction}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {dd.current_assigned}/{capacity}
+                            </span>
+                          </div>
+                          <div className="mt-2 h-1.5 rounded-full bg-secondary">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
 
-        {typeof drive.location_lat === "number" &&
-          typeof drive.location_lng === "number" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Drive Location</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <LocationMap
-                  lat={drive.location_lat}
-                  lng={drive.location_lng}
-                  readOnly
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => {
-                    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                      `${drive.location_lat},${drive.location_lng}`,
-                    )}`;
-                    window.open(url, "_blank", "noopener,noreferrer");
-                  }}
-                >
-                  Open in Google Maps
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-      </div>
+            <div className="space-y-4">
+              {typeof drive.location_lat === "number" &&
+                typeof drive.location_lng === "number" && (
+                  <Card className="overflow-hidden">
+                    <CardHeader className="pb-3">
+                      <CardTitle>Drive location</CardTitle>
+                      {(drive.location_name || drive.location_address) && (
+                        <p className="text-sm text-muted-foreground">
+                          {drive.location_name}
+                          {drive.location_address &&
+                            ` — ${drive.location_address}`}
+                        </p>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-hidden rounded-xl border bg-muted/40">
+                        <LocationMap
+                          lat={drive.location_lat}
+                          lng={drive.location_lng}
+                          readOnly
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+            </div>
+          </div>
+        )}
+
+        {view === "assignments" && (
+          <div className="rounded-2xl border bg-card/60 p-4 md:p-6">
+            <AssignmentsPage />
+          </div>
+        )}
+
+        {view === "live" && (
+          <div className="rounded-2xl border bg-card/60 p-4 md:p-6">
+            <LiveDashboardPage />
+          </div>
+        )}
+
+        {view === "reminders" && (
+          <div className="rounded-2xl border bg-card/60 p-4 md:p-6">
+            <RemindersPage />
+          </div>
+        )}
+
+        {view === "calls" && (
+          <div className="rounded-2xl border bg-card/60 p-4 md:p-6">
+            <CallCenterPage />
+          </div>
+        )}
+      </section>
 
       {/* Delete Drive Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={(open) => { if (!open) { setDeleteOpen(false); setDeleteInfo(null); } }}>

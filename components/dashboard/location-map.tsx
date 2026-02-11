@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Script from "next/script";
+import { Navigation } from "lucide-react";
 
 type LocationMapProps = {
   lat?: number | null;
@@ -9,6 +10,8 @@ type LocationMapProps = {
   onChange?: (coords: { lat: number; lng: number }) => void;
   readOnly?: boolean;
   className?: string;
+  /** When true, uses compact height and hides address text (e.g. for cards) */
+  compact?: boolean;
 };
 
 const KARACHI_CENTER = { lat: 24.8607, lng: 67.0011 };
@@ -19,6 +22,7 @@ export function LocationMap({
   onChange,
   readOnly = false,
   className = "",
+  compact = false,
 }: LocationMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -169,11 +173,32 @@ export function LocationMap({
         onLoad={() => setScriptLoaded(true)}
       />
       <div className={className}>
-        <div
-          ref={containerRef}
-          className="h-80 w-full rounded-md border border-border"
-        />
-        {hasLocation && (
+        <div className="relative group/map">
+          <div
+            ref={containerRef}
+            className={`w-full rounded-md border border-border ${compact ? "h-28" : "h-80"}`}
+          />
+          {readOnly && hasLocation && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                  `${lat},${lng}`,
+                )}`;
+                window.open(url, "_blank", "noopener,noreferrer");
+              }}
+              className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover/map:opacity-100 rounded-md"
+            >
+              <span className="inline-flex items-center gap-1 rounded-full bg-background/80 px-3 py-1 text-xs font-medium">
+                <Navigation className="h-3 w-3" />
+                Get directions
+              </span>
+            </button>
+          )}
+        </div>
+        {hasLocation && !compact && (
           <p className="mt-2 text-xs text-muted-foreground">
             Selected location:{" "}
             {resolvedAddress ?? `${lat?.toFixed(5)}, ${lng?.toFixed(5)}`}
