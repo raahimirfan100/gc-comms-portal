@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { SkeletonForm } from "@/components/ui/skeleton-form";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Tables } from "@/lib/supabase/types";
 
 export default function SheetsSettingsPage() {
@@ -65,14 +67,18 @@ export default function SheetsSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <SkeletonForm fields={4} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div>
         <h1 className="text-2xl font-bold">Google Sheets Sync</h1>
         <p className="text-muted-foreground">
@@ -80,7 +86,7 @@ export default function SheetsSettingsPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Add Sheet</CardTitle>
           <CardDescription>
@@ -115,7 +121,7 @@ export default function SheetsSettingsPage() {
 
       <div className="space-y-3">
         {syncs.map((sync) => (
-          <Card key={sync.id}>
+          <Card key={sync.id} className="stagger-item">
             <CardContent className="flex items-center justify-between pt-5 pb-5 sm:pt-6 sm:pb-6">
               <div>
                 <p className="font-medium font-mono text-sm">

@@ -33,6 +33,8 @@ import {
 import { toast } from "sonner";
 import { Plus, Settings2, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SkeletonCard } from "@/components/ui/skeleton-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Tables } from "@/lib/supabase/types";
 import { DutyRulesModal } from "@/components/duties/duty-rules-modal";
 import { DutyDescriptionEditor } from "@/components/duties/duty-description-editor";
@@ -186,14 +188,25 @@ export default function DutiesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonCard key={i} variant="duty" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Duties</h1>
@@ -300,7 +313,7 @@ export default function DutiesPage() {
           <Card
             key={duty.id}
             className={cn(
-              "transition-colors",
+              "stagger-item transition-colors",
               !duty.is_active && "opacity-60"
             )}
           >

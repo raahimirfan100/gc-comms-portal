@@ -22,7 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatPhone } from "@/lib/utils";
-import { Search, Plus, Upload, Loader2 } from "lucide-react";
+import { Search, Plus, Upload } from "lucide-react";
+import { SkeletonTableRow } from "@/components/ui/skeleton-table";
 import type { Tables } from "@/lib/supabase/types";
 
 export default function VolunteersPage() {
@@ -61,7 +62,7 @@ export default function VolunteersPage() {
   }, [loadVolunteers]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Volunteers</h1>
@@ -129,11 +130,11 @@ export default function VolunteersPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                </TableCell>
-              </TableRow>
+              <>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <SkeletonTableRow key={i} columns={7} />
+                ))}
+              </>
             ) : volunteers.length === 0 ? (
               <TableRow>
                 <TableCell
@@ -145,7 +146,7 @@ export default function VolunteersPage() {
               </TableRow>
             ) : (
               volunteers.map((v) => (
-                <TableRow key={v.id}>
+                <TableRow key={v.id} className="stagger-item">
                   <TableCell>
                     <Link
                       href={`/volunteers/${v.id}`}

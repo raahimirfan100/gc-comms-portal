@@ -244,7 +244,7 @@ export default function NewDrivePage() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
         <Card className="border-0 shadow-none">
           <CardHeader className="px-4 pt-4 pb-2 sm:px-6">

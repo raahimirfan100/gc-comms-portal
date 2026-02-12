@@ -28,6 +28,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { toast } from "sonner";
 import { Loader2, MoonStar, Users } from "lucide-react";
+import { SkeletonForm } from "@/components/ui/skeleton-form";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const LocationMap = dynamic(
   () =>
@@ -225,14 +227,15 @@ export default function EditDrivePage() {
 
   if (loadingDrive) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <Skeleton className="h-8 w-48" />
+        <SkeletonForm fields={8} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
         <Card className="border-0 shadow-none">
           <CardHeader className="px-4 pt-4 pb-2 sm:px-6">

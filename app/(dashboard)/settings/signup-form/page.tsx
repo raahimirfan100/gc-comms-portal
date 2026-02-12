@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Copy, Check } from "lucide-react";
+import { SkeletonForm } from "@/components/ui/skeleton-form";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type WindowMode = "next_n_days" | "next_m_drives" | "manual";
 
@@ -99,14 +101,18 @@ export default function SignupFormSettingsPage() {
 
   if (loading || !config) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <SkeletonForm fields={4} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div>
         <h1 className="text-2xl font-bold">Sign-up Form</h1>
         <p className="text-muted-foreground">
@@ -114,7 +120,7 @@ export default function SignupFormSettingsPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Drive window</CardTitle>
           <CardDescription>
@@ -222,7 +228,7 @@ export default function SignupFormSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Public sign-up link</CardTitle>
           <CardDescription>

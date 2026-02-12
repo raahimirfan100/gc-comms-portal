@@ -23,6 +23,8 @@ import {
 import { toast } from "sonner";
 import { Loader2, Phone, PhoneCall } from "lucide-react";
 import { formatPhone, getStatusColor } from "@/lib/utils";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type CallEntry = {
   id: string;
@@ -157,14 +159,24 @@ export default function CallCenterPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+        <SkeletonTable rows={8} columns={5} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Call Center</h1>
@@ -203,7 +215,7 @@ export default function CallCenterPage() {
             </TableHeader>
             <TableBody>
               {entries.map((e) => (
-                <TableRow key={e.id}>
+                <TableRow key={e.id} className="stagger-item">
                   <TableCell>
                     <Checkbox
                       checked={selected.has(e.volunteer_id)}

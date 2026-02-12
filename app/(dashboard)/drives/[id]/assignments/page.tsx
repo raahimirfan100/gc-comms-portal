@@ -47,6 +47,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getStatusColor } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonKanbanColumn } from "@/components/ui/skeleton-kanban";
 
 type Assignment = {
   id: string;
@@ -287,14 +289,25 @@ export default function AssignmentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-4 page-fade-in">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-32" />
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonKanbanColumn key={i} />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 page-fade-in">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Duty Board</h1>
@@ -339,7 +352,7 @@ export default function AssignmentsPage() {
                 : 0;
 
             return (
-              <Card key={dd.duty_id} id={dd.duty_id}>
+              <Card key={dd.duty_id} id={dd.duty_id} className="stagger-item">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm">

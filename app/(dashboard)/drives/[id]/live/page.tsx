@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { getStatusColor, formatPhone } from "@/lib/utils";
-import { AlertTriangle, Loader2, Radio, Users } from "lucide-react";
+import { AlertTriangle, Radio, Users } from "lucide-react";
+import { SkeletonStatCard } from "@/components/ui/skeleton-chart";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type AssignmentWithVolunteer = {
   id: string;
@@ -83,14 +85,34 @@ export default function LiveDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="flex items-center gap-3">
+          <Radio className="h-5 w-5 text-red-500 animate-pulse" />
+          <Skeleton className="h-8 w-48" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonStatCard key={i} variant="live" />
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-md" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="flex items-center gap-3">
         <Radio className="h-5 w-5 text-red-500 animate-pulse" />
         <h1 className="text-2xl font-bold">Live Dashboard</h1>
@@ -115,7 +137,7 @@ export default function LiveDashboardPage() {
           { label: "Arrived", value: arrived, color: "bg-emerald-500" },
           { label: "Cancelled", value: cancelled, color: "bg-red-500" },
         ].map((stat) => (
-          <Card key={stat.label}>
+          <Card key={stat.label} className="stagger-item">
             <CardContent className="pt-6 text-center">
               <div
                 className={`mx-auto mb-2 h-2 w-8 rounded-full ${stat.color}`}
@@ -127,7 +149,7 @@ export default function LiveDashboardPage() {
         ))}
       </div>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -139,7 +161,7 @@ export default function LiveDashboardPage() {
             {assignments.map((a) => (
               <div
                 key={a.id}
-                className="flex items-center justify-between rounded-md border p-3"
+                className="stagger-item flex items-center justify-between rounded-md border p-3"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-sm">

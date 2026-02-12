@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { SkeletonForm } from "@/components/ui/skeleton-form";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AlertSettingsPage() {
   const supabase = createClient();
@@ -48,14 +50,18 @@ export default function AlertSettingsPage() {
 
   if (loading || !config) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <SkeletonForm fields={4} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div>
         <h1 className="text-2xl font-bold">Alert Settings</h1>
         <p className="text-muted-foreground">
@@ -63,7 +69,7 @@ export default function AlertSettingsPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Deficit Alerts</CardTitle>
           <CardDescription>

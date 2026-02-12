@@ -40,7 +40,8 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormField } from "@/components/ui/form-field";
 import { PageHeader } from "@/components/ui/page-header";
-import { LoadingState } from "@/components/ui/loading-state";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SeasonsPage() {
   const supabase = createClient();
@@ -304,12 +305,18 @@ export default function SeasonsPage() {
 
   if (loading) {
     return (
-      <LoadingState text="Loading seasons..." />
+      <div className="space-y-6 page-fade-in">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <SkeletonTable rows={5} columns={5} />
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <PageHeader
         title="Seasons"
         description="Configure and manage Ramadan seasons."
@@ -455,7 +462,7 @@ export default function SeasonsPage() {
             </TableHeader>
             <TableBody>
               {seasons.map((season) => (
-                <TableRow key={season.id}>
+                <TableRow key={season.id} className="stagger-item">
                   <TableCell className="font-medium">{season.name}</TableCell>
                   <TableCell>
                     {season.start_date

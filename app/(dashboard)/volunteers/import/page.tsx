@@ -122,7 +122,7 @@ export default function BulkImportPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 page-fade-in">
       <div>
         <h1 className="text-2xl font-bold">Bulk Import Volunteers</h1>
         <p className="text-muted-foreground">
@@ -203,7 +203,7 @@ export default function BulkImportPage() {
                 </TableHeader>
                 <TableBody>
                   {parsed.slice(0, 50).map((row, i) => (
-                    <TableRow key={i}>
+                    <TableRow key={i} className="stagger-item">
                       <TableCell>{row.name}</TableCell>
                       <TableCell className="font-mono text-sm">
                         {row.phone}

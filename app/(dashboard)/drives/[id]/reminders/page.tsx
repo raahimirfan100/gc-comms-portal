@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, Send, Trash2 } from "lucide-react";
 import type { Tables } from "@/lib/supabase/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RemindersPage() {
   const { id: driveId } = useParams<{ id: string }>();
@@ -82,14 +83,25 @@ export default function RemindersPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 w-full rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Reminders</h1>
@@ -106,7 +118,7 @@ export default function RemindersPage() {
 
       <div className="space-y-4">
         {reminders.map((r) => (
-          <Card key={r.id}>
+          <Card key={r.id} className="stagger-item">
             <CardContent className="space-y-3 pt-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
@@ -156,7 +168,7 @@ export default function RemindersPage() {
         ))}
 
         {reminders.length === 0 && (
-          <Card>
+          <Card className="stagger-item">
             <CardContent className="py-8 text-center text-muted-foreground">
               No reminders configured. Click "Add Reminder" to create one.
             </CardContent>

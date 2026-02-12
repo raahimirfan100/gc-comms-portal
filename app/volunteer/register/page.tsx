@@ -177,7 +177,7 @@ export default function VolunteerRegisterPage() {
 
   if (submitted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4 page-fade-in">
         <Card className="w-full max-w-md text-center">
           <CardContent className="space-y-4 pb-8 pt-8">
             <CheckCircle2 className="mx-auto h-16 w-16 text-green-600" />
@@ -203,7 +203,7 @@ export default function VolunteerRegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4 page-fade-in">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -382,7 +382,7 @@ export default function VolunteerRegisterPage() {
                           <Card
                             key={drive.id}
                             className={cn(
-                              "cursor-pointer border-2 transition-colors",
+                              "stagger-item cursor-pointer border-2 transition-colors",
                               isSelected
                                 ? "border-primary bg-primary/5"
                                 : "hover:border-primary/40",

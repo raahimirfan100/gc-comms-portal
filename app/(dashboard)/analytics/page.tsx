@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Users, CalendarDays, Utensils, Award } from "lucide-react";
+import { Users, CalendarDays, Utensils, Award } from "lucide-react";
+import { SkeletonStatCard, SkeletonChart } from "@/components/ui/skeleton-chart";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   BarChart,
   Bar,
@@ -117,18 +119,39 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <Skeleton className="h-8 w-32" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <SkeletonChart />
+          <SkeletonChart />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-md" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <h1 className="text-2xl font-bold">Analytics</h1>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card className="stagger-item">
           <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -139,7 +162,7 @@ export default function AnalyticsPage() {
             <p className="mt-1 text-3xl font-bold">{stats.totalVolunteers}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stagger-item">
           <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -150,7 +173,7 @@ export default function AnalyticsPage() {
             <p className="mt-1 text-3xl font-bold">{stats.totalDrives}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stagger-item">
           <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Utensils className="h-4 w-4 text-muted-foreground" />
@@ -161,7 +184,7 @@ export default function AnalyticsPage() {
             <p className="mt-1 text-3xl font-bold">{stats.totalAssignments}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stagger-item">
           <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
               <Award className="h-4 w-4 text-muted-foreground" />
@@ -175,7 +198,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="stagger-item">
           <CardHeader>
             <CardTitle>Duty Distribution</CardTitle>
           </CardHeader>
@@ -209,7 +232,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="stagger-item">
           <CardHeader>
             <CardTitle>Volunteers Per Drive</CardTitle>
           </CardHeader>
@@ -234,7 +257,7 @@ export default function AnalyticsPage() {
       </div>
 
       {leaderboard.length > 0 && (
-        <Card>
+        <Card className="stagger-item">
           <CardHeader>
             <CardTitle>Volunteer Leaderboard</CardTitle>
           </CardHeader>
@@ -243,7 +266,7 @@ export default function AnalyticsPage() {
               {leaderboard.map((v, i) => (
                 <div
                   key={v.name}
-                  className="flex items-center justify-between rounded-md border p-3"
+                  className="stagger-item flex items-center justify-between rounded-md border p-3"
                 >
                   <div className="flex items-center gap-3">
                     <span className="w-6 text-center font-bold text-muted-foreground">

@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
 import { checkAndUpdateDriveStatuses } from "./actions";
+import { SkeletonCard } from "@/components/ui/skeleton-card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const LocationMap = dynamic(
   () =>
@@ -147,15 +149,26 @@ export default function DrivesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} variant="drive" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (noSeason) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
+      <div className="flex flex-col items-center justify-center gap-4 py-20 page-fade-in">
         <h2 className="text-xl font-semibold">No Active Season</h2>
         <p className="text-muted-foreground">
           Create a season in Settings to get started.
@@ -168,7 +181,7 @@ export default function DrivesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Iftaar Drives</h1>
@@ -234,7 +247,7 @@ export default function DrivesPage() {
             return (
               <Link key={drive.id} href={`/drives/${drive.id}`}>
                 <Card
-                  className={`group cursor-pointer overflow-hidden rounded-2xl border shadow-sm transition-all ${
+                  className={`stagger-item group cursor-pointer overflow-hidden rounded-2xl border shadow-sm transition-all ${
                     isInProgress
                       ? "border-sky-500/60 bg-sky-500/5 hover:border-sky-500/80 hover:shadow-lg hover:shadow-sky-500/20"
                       : isCompleted

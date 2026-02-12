@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -182,14 +183,54 @@ export default function DriveDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <section className="overflow-hidden rounded-2xl border px-5 py-5 md:px-8 md:py-6">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-3 md:max-w-xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-96" />
+              <Skeleton className="h-4 w-80" />
+            </div>
+            <div className="grid gap-3 text-sm sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-xl" />
+              ))}
+            </div>
+          </div>
+        </section>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   if (!drive) {
-    return <div className="py-12 text-center">Drive not found</div>;
+    return (
+      <div className="py-12 text-center page-fade-in">Drive not found</div>
+    );
   }
 
   const totalCapacity =
@@ -211,7 +252,7 @@ export default function DriveDetailPage() {
       : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       {/* Hero header */}
       <section className="overflow-hidden rounded-2xl border border-primary/20 bg-card px-5 py-5 shadow-lg md:px-8 md:py-6">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -455,7 +496,7 @@ export default function DriveDetailPage() {
                       return (
                         <div
                           key={dd.id}
-                          className="rounded-lg border border-border/60 bg-background/40 p-3"
+                          className="stagger-item rounded-lg border border-border/60 bg-background/40 p-3"
                         >
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">

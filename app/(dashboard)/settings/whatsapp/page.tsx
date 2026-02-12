@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Wifi, WifiOff, QrCode, RefreshCw } from "lucide-react";
+import { SkeletonForm } from "@/components/ui/skeleton-form";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WhatsAppSettingsPage() {
   const supabase = createClient();
@@ -87,14 +89,18 @@ export default function WhatsAppSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <SkeletonForm fields={5} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div>
         <h1 className="text-2xl font-bold">WhatsApp Settings</h1>
         <p className="text-muted-foreground">
@@ -102,11 +108,11 @@ export default function WhatsAppSettingsPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Connection Status</CardTitle>
         </CardHeader>
-        <CardContent>
+          <CardContent>
           <div className="flex items-center gap-4">
             {session?.status === "connected" ? (
               <>
@@ -158,7 +164,7 @@ export default function WhatsAppSettingsPage() {
 
       {config && (
         <>
-          <Card>
+          <Card className="stagger-item">
             <CardContent className="flex items-center justify-between pt-6">
               <div>
                 <Label className="text-base">Enable WhatsApp</Label>
@@ -173,7 +179,7 @@ export default function WhatsAppSettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="stagger-item">
             <CardHeader>
               <CardTitle>Rate Limiting</CardTitle>
             </CardHeader>

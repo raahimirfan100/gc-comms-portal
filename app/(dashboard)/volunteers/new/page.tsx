@@ -61,7 +61,7 @@ export default function NewVolunteerPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg">
+    <div className="mx-auto max-w-lg page-fade-in">
       <Card>
         <CardHeader>
           <CardTitle>Add Volunteer</CardTitle>
