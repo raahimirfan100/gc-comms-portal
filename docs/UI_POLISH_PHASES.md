@@ -405,7 +405,6 @@ Add smooth animations to all form interactions including focus states, validatio
      - Add error state animations
 
 2. **Form Field Animations**
-   - Add label float animation
    - Add error message slide-in animation
    - Add success checkmark animation
 

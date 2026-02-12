@@ -54,14 +54,15 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
               key={item.name}
               href={item.href}
               onClick={onNavigate}
+              data-active={isActive}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "nav-item flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="nav-icon h-4 w-4 shrink-0" />
               {item.name}
             </Link>
           );
@@ -71,24 +72,25 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
           <Link
             href="/settings/assignment"
             onClick={onNavigate}
+            data-active={isSettingsOpen}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "nav-item flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
               isSettingsOpen
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
             )}
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="nav-icon h-4 w-4 shrink-0" />
             Settings
             <ChevronDown
               className={cn(
-                "ml-auto h-4 w-4 transition-transform",
+                "nav-icon ml-auto h-4 w-4 transition-transform duration-200 ease-out",
                 isSettingsOpen && "rotate-180",
               )}
             />
           </Link>
           {isSettingsOpen && (
-            <div className="ml-7 mt-1 space-y-1">
+            <div className="nav-settings-expand ml-7 mt-1 space-y-1">
               {settingsNav.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -97,10 +99,10 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
                     href={item.href}
                     onClick={onNavigate}
                     className={cn(
-                      "block rounded-md px-3 py-1.5 text-sm transition-colors",
+                      "nav-settings-item block rounded-md px-3 py-1.5 text-sm",
                       isActive
                         ? "font-medium text-primary"
-                        : "text-muted-foreground hover:text-foreground",
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
                     )}
                   >
                     {item.name}

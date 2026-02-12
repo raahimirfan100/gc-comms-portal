@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { cn, normalizePhone, formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import {
   CheckCircle2,
   ArrowLeft,
   Navigation,
+  Circle,
 } from "lucide-react";
 
 type Drive = {
@@ -52,6 +53,7 @@ type Step = 1 | 2 | 3;
 
 export default function VolunteerRegisterPage() {
   const [step, setStep] = useState<Step>(1);
+  const [prevStep, setPrevStep] = useState<Step | null>(null);
   const [phone, setPhone] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
   const [phoneLoading, setPhoneLoading] = useState(false);
@@ -117,6 +119,7 @@ export default function VolunteerRegisterPage() {
         setOrganization("");
       }
       setSelectedDrives(data.existingDriveIds ?? []);
+      setPrevStep(step);
       setStep(2);
     } catch (err) {
       setPhoneError(err instanceof Error ? err.message : "Something went wrong");
@@ -127,8 +130,22 @@ export default function VolunteerRegisterPage() {
 
   function handleDetailsNext() {
     if (!name.trim() || !gender) return;
+    setPrevStep(step);
     setStep(3);
   }
+
+  function handleStepChange(newStep: Step) {
+    setPrevStep(step);
+    setStep(newStep);
+  }
+
+  // Determine animation direction
+  const getStepAnimation = () => {
+    if (!prevStep) return "";
+    if (step > prevStep) return "form-step-enter-right";
+    if (step < prevStep) return "form-step-enter-left";
+    return "";
+  };
 
   function toggleDrive(driveId: string) {
     setSelectedDrives((prev) =>
@@ -214,8 +231,54 @@ export default function VolunteerRegisterPage() {
             Sign up to volunteer for our Iftaar Drives in Karachi
           </CardDescription>
         </CardHeader>
+        {/* Step Indicator */}
+        <div className="border-b border-border px-6 py-4">
+          <div className="relative flex items-center justify-center max-w-md mx-auto">
+            {[1, 2, 3].map((stepNum) => {
+              const isCompleted = step > stepNum;
+              const isCurrent = step === stepNum;
+              return (
+                <Fragment key={stepNum}>
+                  <div className="flex items-center gap-1.5 relative z-10 flex-shrink-0">
+                    {isCompleted && (
+                      <CheckCircle2
+                        className={cn(
+                          "h-3.5 w-3.5 transition-colors flex-shrink-0",
+                          "text-primary",
+                        )}
+                      />
+                    )}
+                    <span
+                      className={cn(
+                        "text-[10px] font-medium whitespace-nowrap uppercase tracking-wide transition-colors",
+                        isCurrent || isCompleted
+                          ? "text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {stepNum === 1
+                        ? "Phone"
+                        : stepNum === 2
+                          ? "Details"
+                          : "Drives"}
+                    </span>
+                  </div>
+                  {stepNum < 3 && (
+                    <div
+                      className={cn(
+                        "h-px transition-all duration-300 flex-1 mx-3",
+                        step > stepNum ? "bg-primary" : "bg-muted",
+                      )}
+                    />
+                  )}
+                </Fragment>
+              );
+            })}
+          </div>
+        </div>
         <CardContent>
-          {step === 1 && (
+          <div className={getStepAnimation()}>
+            {step === 1 && (
             <>
               {noDrivesAvailable ? (
                 <div className="space-y-4">
@@ -313,7 +376,7 @@ export default function VolunteerRegisterPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setStep(1)}
+                  onClick={() => handleStepChange(1)}
                   className="flex-1"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -342,7 +405,7 @@ export default function VolunteerRegisterPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setStep(2)}
+                    onClick={() => handleStepChange(2)}
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -512,7 +575,7 @@ export default function VolunteerRegisterPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setStep(2)}
+                      onClick={() => handleStepChange(2)}
                       className="flex-1"
                     >
                       <ArrowLeft className="mr-2 h-4 w-4" />
@@ -536,7 +599,8 @@ export default function VolunteerRegisterPage() {
                 </>
               )}
             </form>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

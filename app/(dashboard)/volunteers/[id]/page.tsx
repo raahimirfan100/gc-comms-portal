@@ -168,12 +168,16 @@ export default function VolunteerProfilePage() {
                 </TableRow>
               ))}
               {assignments.length === 0 && (
-                <TableRow>
+                <TableRow className="empty-state">
                   <TableCell
                     colSpan={4}
-                    className="text-center text-muted-foreground py-4"
+                    className="text-center text-muted-foreground py-12"
                   >
-                    No assignments yet
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="empty-state-icon text-4xl">📝</div>
+                      <p className="text-base font-medium">No assignments yet</p>
+                      <p className="text-sm">This volunteer hasn't been assigned to any drives</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

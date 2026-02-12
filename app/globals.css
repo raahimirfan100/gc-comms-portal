@@ -347,5 +347,361 @@
       transform: none;
     }
   }
+
+  /* Form input focus ring animation */
+  @keyframes focusRing {
+    0% {
+      box-shadow: 0 0 0 0 hsl(var(--ring) / 0);
+    }
+    50% {
+      box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+    }
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--ring) / 0);
+    }
+  }
+
+  /* Form input error shake animation */
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      transform: translateX(-4px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: translateX(4px);
+    }
+  }
+
+  /* Error message slide-in animation */
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Success checkmark animation */
+  @keyframes checkmark {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Multi-step form slide transitions */
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideOutRight {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+  }
+
+  @keyframes slideOutLeft {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+  }
+
+  /* Progress bar fill animation */
+  @keyframes progressFill {
+    from {
+      width: 0%;
+    }
+  }
+
+  /* Form input focus state */
+  .form-input-focus:focus-visible {
+    animation: focusRing 0.4s ease-out;
+  }
+
+  /* Form input error state */
+  .form-input-error {
+    animation: shake 0.5s ease-in-out;
+  }
+
+  /* Form error message */
+  .form-error-message {
+    animation: slideInDown 0.3s ease-out;
+  }
+
+  /* Form success checkmark */
+  .form-success-checkmark {
+    animation: checkmark 0.4s ease-out;
+  }
+
+  /* Multi-step form transitions */
+  .form-step-enter-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  .form-step-enter-left {
+    animation: slideInLeft 0.3s ease-out;
+  }
+
+  .form-step-exit-right {
+    animation: slideOutRight 0.3s ease-out;
+  }
+
+  .form-step-exit-left {
+    animation: slideOutLeft 0.3s ease-out;
+  }
+
+  /* Progress bar animation */
+  .form-progress-bar {
+    transition: width 0.3s ease-out;
+    animation: progressFill 0.5s ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .form-input-focus:focus-visible,
+    .form-input-error,
+    .form-error-message,
+    .form-success-checkmark,
+    .form-step-enter-right,
+    .form-step-enter-left,
+    .form-step-exit-right,
+    .form-step-exit-left,
+    .form-progress-bar {
+      animation: none;
+      transition: none;
+    }
+  }
+
+  /* Table row hover enhancement */
+  [data-slot="table-row"] {
+    transition: background-color 200ms ease-out, transform 150ms ease-out, box-shadow 150ms ease-out;
+  }
+
+  /* Only apply movement/shadow to body rows, not header */
+  [data-slot="table-body"] [data-slot="table-row"]:hover {
+    transform: translateX(2px);
+    box-shadow: -2px 0 0 0 hsl(var(--primary) / 0.2);
+  }
+
+  /* Ensure table containers account for transform to prevent overflow */
+  [data-slot="table-container"] {
+    padding-right: 2px;
+  }
+
+  /* Table row selection state */
+  [data-slot="table-row"][data-state="selected"] {
+    background-color: hsl(var(--accent));
+    border-left: 2px solid hsl(var(--primary));
+  }
+
+  /* Empty state fade-in animation */
+  @keyframes emptyStateFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Empty state icon animation */
+  @keyframes emptyStateIcon {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 1;
+    }
+  }
+
+  .empty-state {
+    animation: emptyStateFadeIn 0.4s ease-out;
+  }
+
+  .empty-state-icon {
+    animation: emptyStateIcon 2s ease-in-out infinite;
+  }
+
+  /* List item hover effects */
+  .list-item {
+    transition: background-color 200ms ease-out, transform 150ms ease-out, box-shadow 150ms ease-out;
+  }
+
+  .list-item:hover {
+    background-color: hsl(var(--accent));
+    transform: translateX(2px);
+    box-shadow: -2px 0 0 0 hsl(var(--primary) / 0.2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot="table-row"]:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .list-item:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .empty-state,
+    .empty-state-icon {
+      animation: none;
+    }
+  }
+
+  /* Phase 10: Navigation & Sidebar enhancements */
+  .nav-item {
+    position: relative;
+    transition:
+      background-color 200ms ease-out,
+      color 200ms ease-out,
+      transform 150ms ease-out;
+  }
+
+
+  .nav-item .nav-icon {
+    transition: transform 180ms ease-out;
+  }
+
+  .nav-item:hover .nav-icon {
+    transform: scale(1.1);
+  }
+
+  .nav-item[data-active="true"] .nav-icon {
+    transform: scale(1.05);
+  }
+
+  .nav-settings-item {
+    transition:
+      background-color 180ms ease-out,
+      color 180ms ease-out,
+      transform 150ms ease-out;
+  }
+
+
+  .nav-settings-expand {
+    animation: navSettingsExpand 0.25s ease-out;
+  }
+
+  @keyframes navSettingsExpand {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .topbar-button {
+    transition:
+      background-color 180ms ease-out,
+      color 180ms ease-out,
+      transform 150ms ease-out;
+  }
+
+  .topbar-button:hover {
+    transform: scale(1.05);
+  }
+
+  .topbar-button:active {
+    transform: scale(0.97);
+  }
+
+  .theme-switcher-trigger {
+    transition:
+      background-color 180ms ease-out,
+      transform 150ms ease-out;
+  }
+
+  .theme-switcher-trigger:hover {
+    transform: scale(1.08);
+  }
+
+  .theme-switcher-icon {
+    transition: transform 250ms ease-out;
+  }
+
+  .theme-switcher-trigger:hover .theme-switcher-icon {
+    transform: rotate(12deg) scale(1.1);
+  }
+
+  .dropdown-menu-content {
+    animation-duration: 200ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .nav-item .nav-icon,
+    .nav-item:hover .nav-icon,
+    .nav-item[data-active="true"] .nav-icon {
+      transform: none;
+    }
+
+    .nav-settings-expand {
+      animation: none;
+    }
+
+    .topbar-button:hover,
+    .topbar-button:active,
+    .theme-switcher-trigger:hover,
+    .theme-switcher-trigger:hover .theme-switcher-icon {
+      transform: none;
+    }
+  }
 }
 

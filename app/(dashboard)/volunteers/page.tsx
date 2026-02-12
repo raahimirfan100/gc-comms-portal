@@ -136,12 +136,16 @@ export default function VolunteersPage() {
                 ))}
               </>
             ) : volunteers.length === 0 ? (
-              <TableRow>
+              <TableRow className="empty-state">
                 <TableCell
                   colSpan={7}
-                  className="text-center py-8 text-muted-foreground"
+                  className="text-center py-12 text-muted-foreground"
                 >
-                  No volunteers found
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="empty-state-icon text-4xl">📋</div>
+                    <p className="text-base font-medium">No volunteers found</p>
+                    <p className="text-sm">Try adjusting your search or filters</p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (

@@ -23,6 +23,7 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -35,9 +36,11 @@ export function SignUpForm({
 
     if (password !== repeatPassword) {
       setError("Passwords do not match");
+      setPasswordError(true);
       setIsLoading(false);
       return;
     }
+    setPasswordError(false);
 
     try {
       const { error } = await supabase.auth.signUp({
@@ -86,7 +89,11 @@ export function SignUpForm({
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setPasswordError(false);
+                  }}
+                  className={cn(passwordError && "border-destructive")}
                 />
               </div>
               <div className="grid gap-2">
@@ -98,7 +105,11 @@ export function SignUpForm({
                   type="password"
                   required
                   value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
+                  onChange={(e) => {
+                    setRepeatPassword(e.target.value);
+                    setPasswordError(false);
+                  }}
+                  className={cn(passwordError && "border-destructive")}
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}

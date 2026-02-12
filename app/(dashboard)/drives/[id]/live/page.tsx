@@ -158,24 +158,34 @@ export default function LiveDashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {assignments.map((a) => (
-              <div
-                key={a.id}
-                className="stagger-item flex items-center justify-between rounded-md border p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-sm">
-                    {a.volunteers?.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {a.duties?.name}
-                  </p>
+            {assignments.length === 0 ? (
+              <div className="col-span-full empty-state py-12 text-center text-muted-foreground">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="empty-state-icon text-4xl">👥</div>
+                  <p className="text-base font-medium">No volunteers assigned</p>
+                  <p className="text-sm">Assign volunteers to this drive to see them here</p>
                 </div>
-                <Badge className={`ml-2 shrink-0 ${getStatusColor(a.status)}`}>
-                  {a.status.replace("_", " ")}
-                </Badge>
               </div>
-            ))}
+            ) : (
+              assignments.map((a) => (
+                <div
+                  key={a.id}
+                  className="stagger-item list-item flex items-center justify-between rounded-md border p-3 cursor-pointer"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-sm">
+                      {a.volunteers?.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {a.duties?.name}
+                    </p>
+                  </div>
+                  <Badge className={`ml-2 shrink-0 ${getStatusColor(a.status)}`}>
+                    {a.status.replace("_", " ")}
+                  </Badge>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

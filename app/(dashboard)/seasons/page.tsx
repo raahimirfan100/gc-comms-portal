@@ -526,12 +526,16 @@ export default function SeasonsPage() {
                 </TableRow>
               ))}
               {seasons.length === 0 && (
-                <TableRow>
+                <TableRow className="empty-state">
                   <TableCell
                     colSpan={7}
-                    className="text-center text-muted-foreground py-8"
+                    className="text-center text-muted-foreground py-12"
                   >
-                    No seasons yet. Create one to get started.
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="empty-state-icon text-4xl">📅</div>
+                      <p className="text-base font-medium">No seasons yet</p>
+                      <p className="text-sm">Create one to get started</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

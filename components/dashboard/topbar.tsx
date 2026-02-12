@@ -68,14 +68,14 @@ export function Topbar() {
         <button
           type="button"
           onClick={handleBackClick}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="topbar-button inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label="Go back"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex items-center lg:hidden">
           <Sheet open={isNavOpen} onOpenChange={setIsNavOpen}>
-            <SheetTrigger className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+            <SheetTrigger className="topbar-button inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
               <Menu className="h-5 w-5" />
               <span className="sr-only">Open navigation</span>
             </SheetTrigger>
