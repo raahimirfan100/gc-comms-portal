@@ -129,7 +129,8 @@ export default function VolunteerRegisterPage() {
   }
 
   function handleDetailsNext() {
-    if (!name.trim() || !gender) return;
+    if (!name.trim() || !email.trim() || !gender || !organization.trim())
+      return;
     setPrevStep(step);
     setStep(3);
   }
@@ -342,12 +343,13 @@ export default function VolunteerRegisterPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -364,12 +366,13 @@ export default function VolunteerRegisterPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="organization">
-                  School / College / University / Company
+                  School / College / University / Company *
                 </Label>
                 <Input
                   id="organization"
                   value={organization}
                   onChange={(e) => setOrganization(e.target.value)}
+                  required
                 />
               </div>
               <div className="flex gap-2">
@@ -385,7 +388,12 @@ export default function VolunteerRegisterPage() {
                 <Button
                   type="button"
                   onClick={handleDetailsNext}
-                  disabled={!name.trim() || !gender}
+                  disabled={
+                    !name.trim() ||
+                    !email.trim() ||
+                    !gender ||
+                    !organization.trim()
+                  }
                   className="flex-1"
                 >
                   Next

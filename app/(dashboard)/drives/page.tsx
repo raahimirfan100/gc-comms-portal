@@ -22,11 +22,21 @@ import {
   Sun,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
+  List,
+  Filter,
 } from "lucide-react";
-import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { formatDate, formatTime, getStatusBadgeVariant } from "@/lib/utils";
 import { checkAndUpdateDriveStatuses } from "./actions";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 
 const LocationMap = dynamic(
   () =>
@@ -260,11 +270,151 @@ type DriveWithDuties = {
   }>;
 };
 
+function DriveCard({ drive }: { drive: DriveWithDuties }) {
+  const totalCapacity =
+    drive.drive_duties?.reduce(
+      (sum, dd) =>
+        sum + (dd.manual_capacity_override ?? dd.calculated_capacity),
+      0,
+    ) || 0;
+  const totalAssigned =
+    drive.drive_duties?.reduce((sum, dd) => sum + dd.current_assigned, 0) || 0;
+  const fillPercent =
+    totalCapacity > 0 ? Math.round((totalAssigned / totalCapacity) * 100) : 0;
+  const hasTarget =
+    typeof drive.volunteer_target === "number" && drive.volunteer_target > 0;
+  const capacityMismatch =
+    hasTarget && drive.volunteer_target !== totalCapacity;
+  const statusConfig = getStatusBadgeConfig(drive.status);
+  const StatusIcon = statusConfig.Icon;
+  const hasLocation =
+    typeof drive.location_lat === "number" &&
+    typeof drive.location_lng === "number";
+  const isInProgress = drive.status === "in_progress";
+  const isCompleted = drive.status === "completed";
+
+  return (
+    <Link
+      href={`/drives/${drive.id}`}
+      className="block w-full shrink-0 md:w-[380px] md:min-w-[380px] lg:min-w-[400px] lg:w-[400px]"
+    >
+      <Card
+        className={`stagger-item group cursor-pointer overflow-hidden rounded-2xl border shadow-sm transition-all h-full ${
+          isInProgress
+            ? "border-sky-500/60 bg-sky-500/5 hover:border-sky-500/80 hover:shadow-lg hover:shadow-sky-500/20"
+            : isCompleted
+              ? "border-primary/5 bg-card/60 opacity-70 hover:border-primary/20 hover:opacity-90"
+              : "border-primary/10 bg-card/90 hover:border-primary/40 hover:shadow-lg"
+        }`}
+      >
+        <CardContent className="p-0">
+          <div
+            className="border-b border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {hasLocation ? (
+              <LocationMap
+                lat={drive.location_lat}
+                lng={drive.location_lng}
+                readOnly
+                compact
+              />
+            ) : (
+              <div className="flex h-28 w-full items-center justify-center rounded-t-2xl border-b border-border bg-muted/30 text-xs text-muted-foreground">
+                No location set
+              </div>
+            )}
+          </div>
+          <div className="space-y-2 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1 min-w-0">
+                <CardTitle className="line-clamp-1 text-base font-semibold leading-tight">
+                  {drive.name}
+                </CardTitle>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    <span>{formatDate(drive.drive_date)}</span>
+                  </span>
+                  {drive.location_name && (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      <span className="max-w-[140px] truncate">
+                        {drive.location_name}
+                      </span>
+                    </span>
+                  )}
+                </div>
+                {hasTarget && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Target{" "}
+                    <span className="font-semibold">
+                      {drive.volunteer_target}
+                    </span>{" "}
+                    • Capacity{" "}
+                    <span className="font-semibold">{totalCapacity}</span>
+                  </p>
+                )}
+              </div>
+              <Badge
+                variant={getStatusBadgeVariant(drive.status).variant}
+                className="flex shrink-0 items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+              >
+                <StatusIcon
+                  className={`h-3 w-3 ${statusConfig.iconClass}`}
+                />
+                <span className="hidden sm:inline">{statusConfig.label}</span>
+                <span className="sm:hidden">
+                  {statusConfig.label.split(" ")[0]}
+                </span>
+              </Badge>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+              <span className="inline-flex items-center gap-1 font-medium">
+                <Calendar className="h-3 w-3 text-muted-foreground" />
+                {formatDate(drive.drive_date)}
+              </span>
+              {drive.sunset_time && (
+                <span className="inline-flex items-center gap-1 text-muted-foreground">
+                  <Sun className="h-3 w-3" />
+                  {formatTime(drive.sunset_time)}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 font-medium">
+                <Users className="h-3 w-3 text-muted-foreground" />
+                {totalAssigned}/{totalCapacity}
+                <span className="text-muted-foreground font-normal">
+                  ({fillPercent}%)
+                </span>
+              </span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <Utensils className="h-3 w-3 text-muted-foreground" />
+                {drive.daig_count} daigs
+              </span>
+              {capacityMismatch && (
+                <span className="inline-flex items-center gap-1 text-amber-400">
+                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                  <span>Target {drive.volunteer_target}</span>
+                </span>
+              )}
+            </div>
+            <Progress value={Math.min(fillPercent, 100)} className="h-1.5" />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
 export default function DrivesPage() {
   const supabase = createClient();
   const [drives, setDrives] = useState<DriveWithDuties[]>([]);
   const [loading, setLoading] = useState(true);
   const [noSeason, setNoSeason] = useState(false);
+  const [viewMode, setViewMode] = useState<"byStatus" | "showAll">("byStatus");
+  const [statusFilter, setStatusFilter] = useState<Set<DriveStatus>>(
+    () => new Set(DRIVE_STATUS_ORDER),
+  );
 
   const drivesByStatus = useMemo(() => {
     const map: Record<DriveStatus, DriveWithDuties[]> = {
@@ -280,6 +430,26 @@ export default function DrivesPage() {
     }
     return map;
   }, [drives]);
+
+  const filteredAndSortedDrives = useMemo(() => {
+    if (viewMode !== "showAll") return [];
+    const filtered = statusFilter.size
+      ? drives.filter((d) => statusFilter.has(d.status as DriveStatus))
+      : drives;
+    return [...filtered].sort(
+      (a, b) =>
+        new Date(a.drive_date).getTime() - new Date(b.drive_date).getTime(),
+    );
+  }, [drives, viewMode, statusFilter]);
+
+  function toggleStatusFilter(status: DriveStatus) {
+    setStatusFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  }
 
   useEffect(() => {
     async function load() {
@@ -336,10 +506,10 @@ export default function DrivesPage() {
       <div className="flex flex-col items-center justify-center gap-4 py-20 page-fade-in">
         <h2 className="text-xl font-semibold">No Active Season</h2>
         <p className="text-muted-foreground">
-          Create a season in Settings to get started.
+          Create a season to get started.
         </p>
-        <Link href="/settings/general">
-          <Button>Go to Settings</Button>
+        <Link href="/seasons">
+          <Button>Go to Seasons</Button>
         </Link>
       </div>
     );
@@ -354,14 +524,101 @@ export default function DrivesPage() {
             Manage all iftaar drives for the current season
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          <Link href="/drives/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Drive
-            </Button>
-          </Link>
+        <Link href="/drives/new">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Drive
+          </Button>
+        </Link>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+          <Button
+            type="button"
+            variant={viewMode === "byStatus" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 gap-1.5 px-2.5"
+            onClick={() => setViewMode("byStatus")}
+          >
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline">By status</span>
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === "showAll" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 gap-1.5 px-2.5"
+            onClick={() => setViewMode("showAll")}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            <span className="hidden sm:inline">Show all</span>
+          </Button>
         </div>
+        {viewMode === "showAll" && (
+          <>
+            <span className="text-muted-foreground/70 px-1" aria-hidden>
+              |
+            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                  <Filter className="h-4 w-4" />
+                  Filter by status
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="start">
+                <p className="mb-2 px-2 text-xs font-medium text-muted-foreground">
+                  Show drives with status
+                </p>
+                <div className="space-y-1.5">
+                  {DRIVE_STATUS_ORDER.map((status) => {
+                    const config = getStatusBadgeConfig(status);
+                    const Icon = config.Icon;
+                    return (
+                      <label
+                        key={status}
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+                      >
+                        <Checkbox
+                          checked={statusFilter.has(status)}
+                          onCheckedChange={() => toggleStatusFilter(status)}
+                        />
+                        <Icon
+                          className={`h-4 w-4 shrink-0 ${config.iconClass}`}
+                        />
+                        <span className="text-sm">
+                          {getSectionTitle(status)}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DRIVE_STATUS_ORDER.filter((s) => statusFilter.has(s)).map(
+                (status) => {
+                  const config = getStatusBadgeConfig(status);
+                  const Icon = config.Icon;
+                  return (
+                    <Badge
+                      key={status}
+                      variant="secondary"
+                      className="cursor-pointer gap-1 pr-1 text-xs font-medium hover:bg-secondary/80"
+                      onClick={() => toggleStatusFilter(status)}
+                    >
+                      <Icon
+                        className={`h-3 w-3 shrink-0 ${config.iconClass}`}
+                      />
+                      {getSectionTitle(status)}
+                    </Badge>
+                  );
+                },
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {drives.length === 0 ? (
@@ -375,6 +632,24 @@ export default function DrivesPage() {
             </Link>
           </CardContent>
         </Card>
+      ) : viewMode === "showAll" ? (
+        <div className="space-y-4">
+          {filteredAndSortedDrives.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">
+                  No drives match the selected status filter.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredAndSortedDrives.map((drive) => (
+                <DriveCard key={drive.id} drive={drive} />
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-8">
           {DRIVE_STATUS_ORDER.map((status) => {
@@ -392,167 +667,9 @@ export default function DrivesPage() {
                 iconClass={sectionConfig.iconClass}
                 count={list.length}
               >
-                {list.map((drive) => {
-            const totalCapacity =
-              drive.drive_duties?.reduce(
-                (sum, dd) =>
-                  sum + (dd.manual_capacity_override ?? dd.calculated_capacity),
-                0,
-              ) || 0;
-            const totalAssigned =
-              drive.drive_duties?.reduce(
-                (sum, dd) => sum + dd.current_assigned,
-                0,
-              ) || 0;
-            const fillPercent =
-              totalCapacity > 0
-                ? Math.round((totalAssigned / totalCapacity) * 100)
-                : 0;
-            const hasTarget =
-              typeof drive.volunteer_target === "number" &&
-              drive.volunteer_target > 0;
-            const capacityMismatch =
-              hasTarget && drive.volunteer_target !== totalCapacity;
-
-            const statusConfig = getStatusBadgeConfig(drive.status);
-            const StatusIcon = statusConfig.Icon;
-
-            const hasLocation =
-              typeof drive.location_lat === "number" &&
-              typeof drive.location_lng === "number";
-
-            const isInProgress = drive.status === "in_progress";
-            const isCompleted = drive.status === "completed";
-
-            return (
-              <Link
-                key={drive.id}
-                href={`/drives/${drive.id}`}
-                className="block w-full shrink-0 md:w-[380px] md:min-w-[380px] lg:min-w-[400px] lg:w-[400px]"
-              >
-                <Card
-                  className={`stagger-item group cursor-pointer overflow-hidden rounded-2xl border shadow-sm transition-all h-full ${
-                    isInProgress
-                      ? "border-sky-500/60 bg-sky-500/5 hover:border-sky-500/80 hover:shadow-lg hover:shadow-sky-500/20"
-                      : isCompleted
-                        ? "border-primary/5 bg-card/60 opacity-70 hover:border-primary/20 hover:opacity-90"
-                        : "border-primary/10 bg-card/90 hover:border-primary/40 hover:shadow-lg"
-                  }`}
-                >
-                  <CardContent className="p-0">
-                    {/* Map at top - clicks stay on map (open directions), don't navigate */}
-                    <div
-                      className="border-b border-border"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {hasLocation ? (
-                        <LocationMap
-                          lat={drive.location_lat}
-                          lng={drive.location_lng}
-                          readOnly
-                          compact
-                        />
-                      ) : (
-                        <div className="flex h-28 w-full items-center justify-center rounded-t-2xl border-b border-border bg-muted/30 text-xs text-muted-foreground">
-                          No location set
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 min-w-0">
-                          <CardTitle className="line-clamp-1 text-base font-semibold leading-tight">
-                            {drive.name}
-                          </CardTitle>
-                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                            <span className="inline-flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{formatDate(drive.drive_date)}</span>
-                            </span>
-                            {drive.location_name && (
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                <span className="max-w-[140px] truncate">
-                                  {drive.location_name}
-                                </span>
-                              </span>
-                            )}
-                          </div>
-                          {hasTarget && (
-                            <p className="text-[11px] text-muted-foreground">
-                              Target{" "}
-                              <span className="font-semibold">
-                                {drive.volunteer_target}
-                              </span>{" "}
-                              • Capacity{" "}
-                              <span className="font-semibold">
-                                {totalCapacity}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                        <Badge
-                          className={`flex shrink-0 items-center gap-1.5 border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${statusConfig.borderClass} ${getStatusColor(
-                            drive.status,
-                          )}`}
-                        >
-                          <StatusIcon
-                            className={`h-3 w-3 ${statusConfig.iconClass}`}
-                          />
-                          <span className="hidden sm:inline">
-                            {statusConfig.label}
-                          </span>
-                          <span className="sm:hidden">
-                            {statusConfig.label.split(" ")[0]}
-                          </span>
-                        </Badge>
-                      </div>
-
-                      {/* Concise inline row: Date • Sunset • Volunteers • Daigs */}
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
-                        <span className="inline-flex items-center gap-1 font-medium">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          {formatDate(drive.drive_date)}
-                        </span>
-                        {drive.sunset_time && (
-                          <span className="inline-flex items-center gap-1 text-muted-foreground">
-                            <Sun className="h-3 w-3" />
-                            {formatTime(drive.sunset_time)}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1 font-medium">
-                          <Users className="h-3 w-3 text-muted-foreground" />
-                          {totalAssigned}/{totalCapacity}
-                          <span className="text-muted-foreground font-normal">
-                            ({fillPercent}%)
-                          </span>
-                        </span>
-                        <span className="inline-flex items-center gap-1 font-medium">
-                          <Utensils className="h-3 w-3 text-muted-foreground" />
-                          {drive.daig_count} daigs
-                        </span>
-                        {capacityMismatch && (
-                          <span className="inline-flex items-center gap-1 text-amber-400">
-                            <AlertTriangle className="h-3 w-3 shrink-0" />
-                            <span>Target {drive.volunteer_target}</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{
-                            width: `${Math.min(fillPercent, 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-                );
-              })}
+                {list.map((drive) => (
+                  <DriveCard key={drive.id} drive={drive} />
+                ))}
               </ScrollableSection>
             );
           })}

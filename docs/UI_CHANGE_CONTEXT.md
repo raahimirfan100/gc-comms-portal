@@ -659,6 +659,84 @@ Enhance all tables and lists with row hover effects, smooth animations, alternat
 
 ---
 
+## Phase 7: Badge & Status Enhancements
+
+### Agent: Implementation Agent
+### Date Started: 2026-02-13
+### Date Completed: 2026-02-13
+### Status: Completed
+
+### Objective
+Enhance all badges and status indicators with gradients, animations, and visual polish across the application.
+
+### Changes Made
+- **Badge component** (`components/ui/badge.tsx`):
+  - Added status gradient variants: `success` (green), `warning` (amber), `error` (red), `info` (blue), `active` (sky/blue with pulse), `muted` (neutral)
+  - All new variants use `bg-gradient-to-r` with theme-aware borders and text (light/dark)
+  - Added `duration-200` to base transition-colors for smooth color transitions
+  - `active` variant includes `badge-pulse` class for in-progress status
+- **Badge pulse animation** (`app/globals.css`):
+  - `@keyframes badge-pulse`: subtle box-shadow pulse (2s ease-in-out infinite)
+  - `.badge-pulse` class for active states
+  - `@media (prefers-reduced-motion: reduce)` disables pulse animation
+- **Status helper** (`lib/utils.ts`):
+  - Added `getStatusBadgeVariant(status)` returning `{ variant, pulse? }` mapped from drive/assignment statuses (in_progress → active + pulse; completed/confirmed/arrived → success; draft/waitlisted/en_route → warning; cancelled/no_show → error; open/assigned → info; fallback → muted)
+  - Kept `getStatusColor()` for backward compatibility (still used in docs; no app Badge usages)
+- **Applied to all badge usages**:
+  - Drives list and drive detail: status badge uses `getStatusBadgeVariant(drive.status).variant`
+  - Assignments page: assignment status Badge uses variant from `getStatusBadgeVariant(assignment.status)`
+  - Volunteers list: Active → `variant="success"`, Inactive → `variant="secondary"`
+  - Volunteer profile: assignment status badges use `getStatusBadgeVariant(a.status).variant`
+  - Live dashboard: assignment status Badge uses variant
+  - Calls page: assignment status Badge uses variant
+  - Reminders: Sent → `variant="success"`
+  - Settings WhatsApp: Connected → `variant="success"`, QR Code Ready → `variant="warning"`, Disconnected → `variant="destructive"` (unchanged)
+  - Settings sheets, env-var-warning: kept existing variant (destructive/outline)
+
+### Files Modified
+- `components/ui/badge.tsx` - Added success, warning, error, info, active, muted variants; active includes badge-pulse
+- `app/globals.css` - Added badge-pulse keyframes and .badge-pulse class with reduced-motion override
+- `lib/utils.ts` - Added getStatusBadgeVariant(), StatusBadgeVariant type
+- `app/(dashboard)/drives/page.tsx` - Drive card status Badge uses getStatusBadgeVariant
+- `app/(dashboard)/drives/[id]/page.tsx` - Drive header status Badge uses getStatusBadgeVariant
+- `app/(dashboard)/drives/[id]/assignments/page.tsx` - VolunteerCard status Badge uses getStatusBadgeVariant
+- `app/(dashboard)/drives/[id]/live/page.tsx` - Assignment status Badge uses getStatusBadgeVariant
+- `app/(dashboard)/drives/[id]/calls/page.tsx` - Assignment status Badge uses getStatusBadgeVariant
+- `app/(dashboard)/drives/[id]/reminders/page.tsx` - Sent badge uses variant="success"
+- `app/(dashboard)/volunteers/page.tsx` - Active badge uses variant="success"
+- `app/(dashboard)/volunteers/[id]/page.tsx` - Assignment status Badge uses getStatusBadgeVariant
+- `app/(dashboard)/settings/whatsapp/page.tsx` - Connected/success, QR Code Ready/warning
+
+### New Components Created
+- None
+
+### Dependencies
+- Tailwind CSS (existing)
+- CSS custom properties for theming (existing)
+- getStatusColor retained in utils for docs/backward compatibility
+
+### Issues Encountered
+- None. Build and type-check passed; all Badge usages updated consistently.
+
+### Testing Notes
+- **Playwriter MCP**: Navigated to `/drives` – status badges (IN PROGRESS, SCHEDULED, PLANNING, COMPLETED, CANCELLED) render with new variants; screenshot confirmed dark theme and badge visibility. Navigated to `/volunteers`; set viewport to 375px for mobile – pages load correctly.
+- **Manual**: Verify in browser that in_progress drive shows pulse on badge; toggle light/dark and check contrast; confirm reduced-motion disables pulse.
+
+### Breaking Changes
+- None. `getStatusColor` remains in lib/utils; no callers in app code use it for Badge (all use getStatusBadgeVariant + variant prop).
+
+### Performance Notes
+- Badge gradients and pulse use CSS only (GPU-friendly). Pulse respects prefers-reduced-motion.
+
+### Accessibility Notes
+- Badge colors (success/warning/error/info/active) use sufficient contrast in light and dark themes. Pulse is decorative; disabled when prefers-reduced-motion is set.
+
+### Recommendations for Future Phases
+1. **Phase 8 (Progress & Charts)**: Drive cards already have progress bars – coordinate gradient progress with badge gradients for consistency.
+2. Keep using `getStatusBadgeVariant()` for any new status badges so variants stay centralized.
+
+---
+
 ## Phase 3: Button Enhancements & Animations
 
 ### Agent: Implementation Agent
@@ -1258,5 +1336,83 @@ Enhance navigation components (sidebar, topbar) with animations and visual polis
 
 ---
 
+## Phase 8: Progress Bar & Chart Enhancements
+
+### Agent: Implementation Agent
+### Date Started: 2026-02-13
+### Date Completed: 2026-02-13
+### Status: Completed
+
+### Objective
+Enhance progress bars and charts with gradients, smooth animations, and visual polish; add number counting and gradient/icon animations to stat cards.
+
+### Changes Made
+- **Progress component** (`components/ui/progress.tsx`): Added gradient fill (CSS in globals.css), smooth fill animation (transition 500ms ease-out), optional glow for high values (≥80%) via `data-high` and `showGlowWhenHigh` prop. Root uses `.progress-bar-root`, indicator uses `.progress-bar-indicator` with gradient and optional box-shadow.
+- **Progress bars applied**: Replaced inline div progress bar on drive cards (`app/(dashboard)/drives/page.tsx`) with `<Progress value={…} className="h-1.5" />`.
+- **Chart enhancements** (`app/(dashboard)/analytics/page.tsx`): Wrapped chart areas in `.chart-entrance` for scale/fade entrance animation; added SVG `<defs>` with `linearGradient` for Pie (per-slice gradients) and Bar (vertical gradient); Tooltip cursor styling on Bar chart; Recharts `animation`/`animationDuration` on Pie/Bar removed for type compatibility (entrance still via CSS).
+- **Stat card enhancements**: Added `.stat-card` (gradient background, hover translateY) and `.stat-card-icon` (hover scale) in globals.css. Analytics: four stat cards use `useCountUp` for number counting and `stat-card` / `stat-card-icon` classes. Live dashboard: five stat cards use `useCountUp` and `stat-card` / `stat-card-icon`.
+- **New hook**: `lib/hooks/use-count-up.ts` – animates number from previous value to target over 600ms (easing), respects `prefers-reduced-motion`.
+- **Live page**: Removed unused `Progress` import; kept stat card and count-up behavior.
+
+### Files Modified
+- `components/ui/progress.tsx` – ProgressProps with `showGlowWhenHigh`, data-high, progress-bar-root/indicator classes
+- `app/globals.css` – Phase 8: progress-bar-root/indicator (gradient, glow), stat-card, stat-card-icon, chart-entrance keyframes and reduced-motion overrides
+- `app/(dashboard)/drives/page.tsx` – Import Progress, replace inline progress div with `<Progress value={…} />`
+- `app/(dashboard)/analytics/page.tsx` – useCountUp (moved before loading return for Rules of Hooks), stat-card/stat-card-icon, chart defs/gradients, chart-entrance wrapper
+- `app/(dashboard)/drives/[id]/live/page.tsx` – useCountUp for five stats, stat-card/stat-card-icon, remove unused Progress import
+
+### New Components Created
+- None (new hook only: `lib/hooks/use-count-up.ts`)
+
+### Dependencies
+- Tailwind CSS, CSS variables (existing)
+- Recharts (existing) – chart gradients use native SVG defs/linearGradient/stop in JSX
+- radix-ui Progress (existing)
+
+### Issues Encountered
+
+#### Issue 1: React Hooks order violation on Analytics
+- **Description**: "Change in the order of Hooks called by AnalyticsPage" – useCountUp (useState) was called after `if (loading) return`, so hooks ran only when not loading.
+- **Root Cause**: useCountUp calls were placed after the loading early return.
+- **Solution**: Moved all four useCountUp calls to the top of AnalyticsPage, immediately after useState declarations and before useEffect/loading check.
+- **Files Affected**: `app/(dashboard)/analytics/page.tsx`
+
+#### Issue 2: useRef generic without initial value
+- **Description**: TypeScript "Expected 1 arguments, but got 0" for useRef<number>().
+- **Root Cause**: useRef with no argument and type number required an initial value in this setup.
+- **Solution**: useRef<number | null>(null) and check !== null in cleanup.
+- **Files Affected**: `lib/hooks/use-count-up.ts`
+
+#### Issue 3: Recharts Pie/Bar animation props
+- **Description**: Type error – Property 'animation' does not exist on Pie props.
+- **Root Cause**: Recharts types in this version don’t expose animation/animationDuration on Pie (and possibly Bar).
+- **Solution**: Removed animation and animationDuration from Pie and Bar; chart entrance is still provided by CSS `.chart-entrance` on the container.
+- **Files Affected**: `app/(dashboard)/analytics/page.tsx`
+
+### Testing Notes
+- **Playwriter MCP**: Navigated to `/drives` – drive cards show progress bars (Progress component). Navigated to `/analytics` – stat cards show numbers (count-up on load), charts render with gradient fills and chart-entrance. Navigated to `/drives/[id]/live` – stat cards show count-up values and stat-card styling. Mobile viewport (375px) – drives and layout responsive.
+- **Progress**: Gradient and optional glow (≥80%) applied via globals.css; smooth transition on value change; reduced-motion disables transition.
+- **Stat cards**: Number counting runs when data loads; gradient background and icon scale on hover; reduced-motion disables hover transform/icon scale.
+- **Charts**: Pie and Bar use gradient fills; container has chart-entrance animation; tooltip/cursor styling on Bar chart.
+
+### Breaking Changes
+- None. Progress API extended with optional `showGlowWhenHigh`; existing callers unchanged. Live page no longer imports Progress (unused).
+
+### Performance Notes
+- useCountUp uses requestAnimationFrame and 600ms duration; respects reduced motion.
+- Progress transition and chart-entrance use CSS only; GPU-friendly.
+- Gradient defs in charts are minimal (one per pie slice, one for bar).
+
+### Accessibility Notes
+- Progress remains semantic (Radix). Count-up is visual only; screen readers still get final number.
+- Reduced motion respected for progress transition, stat-card hover, chart-entrance, and useCountUp.
+
+### Recommendations for Future Phases
+1. If Recharts is upgraded and supports typed animation props on Pie/Bar, re-add animation/animationDuration for chart draw-in.
+2. Consider a shared StatCard component that uses useCountUp and stat-card classes for consistency.
+3. Progress glow threshold (80%) is hardcoded; could be made configurable via prop if needed.
+
+---
+
 **Last Updated**: 2026-02-13
-**Status**: Phase 10 Completed
+**Status**: Phase 8 Completed

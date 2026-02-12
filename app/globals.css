@@ -31,25 +31,26 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
+    /* Base: 206 73% 9% - dark blue, subdued */
+    --background: 206 30% 5%;
+    --foreground: 0 0% 96%;
+    --card: 206 30% 7%;
+    --card-foreground: 0 0% 96%;
+    --popover: 206 28% 7%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
     --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --secondary: 206 25% 9%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 206 22% 8%;
+    --muted-foreground: 206 10% 80%;
+    --accent: 206 25% 11%;
+    --accent-foreground: 0 0% 96%;
     --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 206 20% 22%;
+    --input: 206 18% 16%;
+    --ring: 206 35% 70%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -208,11 +209,93 @@
   .dark .skeleton-shimmer {
     background: linear-gradient(
       90deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--muted) / 0.3) 50%,
-      hsl(var(--muted)) 100%
+      hsl(206 24% 8%) 0%,
+      hsl(206 26% 12%) 50%,
+      hsl(206 24% 8%) 100%
     );
     background-size: 2000px 100%;
+  }
+
+  /* Phase 8: Progress bar – gradient fill, smooth animation, glow for high values */
+  .progress-bar-root {
+    background-color: hsl(var(--primary) / 0.2);
+  }
+
+  .progress-bar-indicator {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 0.85) 0%,
+      hsl(var(--primary)) 50%,
+      hsl(var(--primary) / 0.9) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  .progress-bar-root[data-high="true"] .progress-bar-indicator {
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.5);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .progress-bar-indicator {
+      transition: none;
+    }
+  }
+
+  /* Phase 8: Stat card – gradient background, icon animation */
+  .stat-card {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--card)) 0%,
+      hsl(var(--card)) 70%,
+      hsl(var(--muted) / 0.4) 100%
+    );
+    transition: background 200ms ease-out, transform 200ms ease-out;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-1px);
+  }
+
+  .stat-card-icon {
+    transition: transform 220ms ease-out;
+  }
+
+  .stat-card:hover .stat-card-icon {
+    transform: scale(1.08);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stat-card:hover {
+      transform: none;
+    }
+    .stat-card-icon,
+    .stat-card:hover .stat-card-icon {
+      transform: none;
+    }
+  }
+
+  /* Chart entrance – applied to chart containers */
+  .chart-entrance {
+    opacity: 0;
+    animation: chartEntrance 0.5s ease-out forwards;
+  }
+
+  @keyframes chartEntrance {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chart-entrance {
+      animation: none;
+      opacity: 1;
+    }
   }
 
   /* Button micro-interactions */
@@ -255,6 +338,27 @@
   [data-slot="button"][data-variant="gradient"]:active::before {
     opacity: 0.9;
     transform: scale(0.96);
+  }
+
+  /* Badge pulse animation for active status */
+  @keyframes badge-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 hsl(199 89% 48% / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 4px hsl(199 89% 48% / 0.1);
+    }
+  }
+
+  .badge-pulse {
+    animation: badge-pulse 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .badge-pulse {
+      animation: none;
+    }
   }
 }
 

@@ -22,10 +22,16 @@ export async function POST(request: NextRequest) {
       driveIds?: string[];
     };
 
+    const emailTrimmed = typeof email === "string" ? email.trim() : "";
+    const organizationTrimmed =
+      typeof organization === "string" ? organization.trim() : "";
+
     if (
       !phone ||
       !name ||
       !gender ||
+      !emailTrimmed ||
+      !organizationTrimmed ||
       !Array.isArray(driveIds) ||
       driveIds.length === 0
     ) {
@@ -44,9 +50,9 @@ export async function POST(request: NextRequest) {
         {
           phone: normalizedPhone,
           name: name.trim(),
-          email: email?.trim() || null,
+          email: emailTrimmed,
           gender,
-          organization: organization?.trim() || null,
+          organization: organizationTrimmed,
           source: "in_app_form" as const,
         },
         { onConflict: "phone" },

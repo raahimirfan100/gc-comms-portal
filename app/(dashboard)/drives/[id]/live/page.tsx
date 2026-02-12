@@ -6,11 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import { getStatusColor, formatPhone } from "@/lib/utils";
+import { getStatusBadgeVariant } from "@/lib/utils";
 import { AlertTriangle, Radio, Users } from "lucide-react";
 import { SkeletonStatCard } from "@/components/ui/skeleton-chart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCountUp } from "@/lib/hooks/use-count-up";
 
 type AssignmentWithVolunteer = {
   id: string;
@@ -83,6 +83,12 @@ export default function LiveDashboardPage() {
   const arrived = statusCounts["arrived"] || 0;
   const cancelled = statusCounts["cancelled"] || 0;
 
+  const countTotal = useCountUp(total);
+  const countConfirmed = useCountUp(confirmed);
+  const countEnRoute = useCountUp(enRoute);
+  const countArrived = useCountUp(arrived);
+  const countCancelled = useCountUp(cancelled);
+
   if (loading) {
     return (
       <div className="space-y-6 page-fade-in">
@@ -131,16 +137,16 @@ export default function LiveDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-5">
         {[
-          { label: "Total", value: total, color: "bg-blue-500" },
-          { label: "Confirmed", value: confirmed, color: "bg-green-500" },
-          { label: "En Route", value: enRoute, color: "bg-yellow-500" },
-          { label: "Arrived", value: arrived, color: "bg-emerald-500" },
-          { label: "Cancelled", value: cancelled, color: "bg-red-500" },
+          { label: "Total", value: countTotal, color: "bg-blue-500" },
+          { label: "Confirmed", value: countConfirmed, color: "bg-green-500" },
+          { label: "En Route", value: countEnRoute, color: "bg-yellow-500" },
+          { label: "Arrived", value: countArrived, color: "bg-emerald-500" },
+          { label: "Cancelled", value: countCancelled, color: "bg-red-500" },
         ].map((stat) => (
-          <Card key={stat.label} className="stagger-item">
+          <Card key={stat.label} className="stagger-item stat-card">
             <CardContent className="pt-6 text-center">
               <div
-                className={`mx-auto mb-2 h-2 w-8 rounded-full ${stat.color}`}
+                className={`stat-card-icon mx-auto mb-2 h-2 w-8 rounded-full ${stat.color}`}
               />
               <p className="text-2xl font-bold">{stat.value}</p>
               <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -180,7 +186,10 @@ export default function LiveDashboardPage() {
                       {a.duties?.name}
                     </p>
                   </div>
-                  <Badge className={`ml-2 shrink-0 ${getStatusColor(a.status)}`}>
+                  <Badge
+                    variant={getStatusBadgeVariant(a.status).variant}
+                    className="ml-2 shrink-0"
+                  >
                     {a.status.replace("_", " ")}
                   </Badge>
                 </div>

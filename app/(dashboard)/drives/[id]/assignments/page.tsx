@@ -46,7 +46,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { getStatusColor } from "@/lib/utils";
+import { getStatusBadgeVariant } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonKanbanColumn } from "@/components/ui/skeleton-kanban";
 
@@ -99,7 +99,10 @@ function VolunteerCard({
           {assignment.volunteers?.name}
         </div>
         <div className="flex items-center gap-1">
-          <Badge className={`text-[10px] px-1 py-0 ${getStatusColor(assignment.status)}`}>
+          <Badge
+            variant={getStatusBadgeVariant(assignment.status).variant}
+            className="text-[10px] px-1 py-0"
+          >
             {assignment.status.replace("_", " ")}
           </Badge>
           {assignment.is_manual_override && (

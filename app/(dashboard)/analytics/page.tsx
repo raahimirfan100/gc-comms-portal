@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, CalendarDays, Utensils, Award } from "lucide-react";
 import { SkeletonStatCard, SkeletonChart } from "@/components/ui/skeleton-chart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCountUp } from "@/lib/hooks/use-count-up";
 import {
   BarChart,
   Bar,
@@ -17,7 +18,6 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 
 const COLORS = [
@@ -49,6 +49,11 @@ export default function AnalyticsPage() {
   const [leaderboard, setLeaderboard] = useState<
     Array<{ name: string; drives: number }>
   >([]);
+
+  const countVolunteers = useCountUp(stats.totalVolunteers);
+  const countDrives = useCountUp(stats.totalDrives);
+  const countAssignments = useCountUp(stats.totalAssignments);
+  const countCompleted = useCountUp(stats.completedAssignments);
 
   useEffect(() => {
     loadAnalytics();
@@ -151,48 +156,46 @@ export default function AnalyticsPage() {
       <h1 className="text-2xl font-bold">Analytics</h1>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="stagger-item">
+        <Card className="stagger-item stat-card">
           <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Users className="stat-card-icon h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
                 Total Volunteers
               </span>
             </div>
-            <p className="mt-1 text-3xl font-bold">{stats.totalVolunteers}</p>
+            <p className="mt-1 text-3xl font-bold">{countVolunteers}</p>
           </CardContent>
         </Card>
-        <Card className="stagger-item">
+        <Card className="stagger-item stat-card">
           <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <CalendarDays className="stat-card-icon h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
                 Total Drives
               </span>
             </div>
-            <p className="mt-1 text-3xl font-bold">{stats.totalDrives}</p>
+            <p className="mt-1 text-3xl font-bold">{countDrives}</p>
           </CardContent>
         </Card>
-        <Card className="stagger-item">
+        <Card className="stagger-item stat-card">
           <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
-              <Utensils className="h-4 w-4 text-muted-foreground" />
+              <Utensils className="stat-card-icon h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
                 Total Assignments
               </span>
             </div>
-            <p className="mt-1 text-3xl font-bold">{stats.totalAssignments}</p>
+            <p className="mt-1 text-3xl font-bold">{countAssignments}</p>
           </CardContent>
         </Card>
-        <Card className="stagger-item">
+        <Card className="stagger-item stat-card">
           <CardContent className="pt-6 pb-6">
             <div className="flex items-center gap-2">
-              <Award className="h-4 w-4 text-muted-foreground" />
+              <Award className="stat-card-icon h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Completed</span>
             </div>
-            <p className="mt-1 text-3xl font-bold">
-              {stats.completedAssignments}
-            </p>
+            <p className="mt-1 text-3xl font-bold">{countCompleted}</p>
           </CardContent>
         </Card>
       </div>
@@ -204,26 +207,47 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {dutyDistribution.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={dutyDistribution}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    label={({ name, percent }) =>
-                      `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
-                    }
-                  >
-                    {dutyDistribution.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="chart-entrance" style={{ width: "100%", height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <defs>
+                      {COLORS.map((color, i) => (
+                        <linearGradient
+                          key={i}
+                          id={`pieGrad-${i}`}
+                          x1="0"
+                          y1="0"
+                          x2="1"
+                          y2="1"
+                        >
+                          <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={color} stopOpacity={1} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <Pie
+                      data={dutyDistribution}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      label={({ name, percent }) =>
+                        `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                      }
+                    >
+                      {dutyDistribution.map((_, i) => (
+                        <Cell
+                          key={i}
+                          fill={`url(#pieGrad-${i})`}
+                          style={{ cursor: "pointer" }}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
                 No assignment data yet
@@ -238,15 +262,29 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {driveStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={driveStats}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="volunteers" fill="#2563eb" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="chart-entrance" style={{ width: "100%", height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={driveStats}>
+                    <defs>
+                      <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.85} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                    <YAxis />
+                    <Tooltip
+                      cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
+                    />
+                    <Bar
+                      dataKey="volunteers"
+                      fill="url(#barGrad)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
                 No drive data yet

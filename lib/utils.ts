@@ -64,3 +64,31 @@ export function getStatusColor(status: string): string {
   };
   return colors[status] || "bg-gray-100 text-gray-800 hover:bg-gray-200/90 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700/90";
 }
+
+export type StatusBadgeVariant =
+  | "success"
+  | "warning"
+  | "error"
+  | "info"
+  | "active"
+  | "muted"
+  | "secondary"
+  | "outline";
+
+export function getStatusBadgeVariant(status: string): {
+  variant: StatusBadgeVariant;
+  pulse?: boolean;
+} {
+  const activeStatuses = ["in_progress"];
+  const successStatuses = ["completed", "confirmed", "arrived"];
+  const warningStatuses = ["draft", "waitlisted", "en_route"];
+  const errorStatuses = ["cancelled", "no_show"];
+  const infoStatuses = ["open", "assigned"];
+
+  if (activeStatuses.includes(status)) return { variant: "active", pulse: true };
+  if (successStatuses.includes(status)) return { variant: "success" };
+  if (warningStatuses.includes(status)) return { variant: "warning" };
+  if (errorStatuses.includes(status)) return { variant: "error" };
+  if (infoStatuses.includes(status)) return { variant: "info" };
+  return { variant: "muted" };
+}

@@ -160,8 +160,9 @@ export default function EditDrivePage() {
 
   const parsedDaigCount = Number(daigCount) || 0;
 
-  // Attach Google Places Autocomplete to the Location Address field
+  // Attach Google Places Autocomplete to the Location Address field (only after form is visible)
   useEffect(() => {
+    if (loadingDrive) return;
     if (!locationAddressRef.current) return;
 
     function initAutocomplete() {
@@ -174,6 +175,9 @@ export default function EditDrivePage() {
         return false;
       }
 
+      const input = locationAddressRef.current;
+      if (!input) return false;
+
       const bounds = new google.maps.LatLngBounds(
         // Rough bounding box around Karachi
         { lat: 24.75, lng: 66.90 }, // SW
@@ -181,7 +185,7 @@ export default function EditDrivePage() {
       );
 
       const autocomplete = new google.maps.places.Autocomplete(
-        locationAddressRef.current as HTMLInputElement,
+        input as HTMLInputElement,
         {
           bounds,
           strictBounds: true,
@@ -223,7 +227,7 @@ export default function EditDrivePage() {
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [loadingDrive]);
 
   if (loadingDrive) {
     return (

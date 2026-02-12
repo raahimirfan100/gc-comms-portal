@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Loader2, Phone, PhoneCall } from "lucide-react";
-import { formatPhone, getStatusColor } from "@/lib/utils";
+import { formatPhone, getStatusBadgeVariant } from "@/lib/utils";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -244,7 +244,9 @@ export default function CallCenterPage() {
                     </TableCell>
                     <TableCell>{e.duty_name}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(e.assignment_status)}>
+                      <Badge
+                        variant={getStatusBadgeVariant(e.assignment_status).variant}
+                      >
                         {e.assignment_status.replace("_", " ")}
                       </Badge>
                     </TableCell>

@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatPhone, formatDate, getStatusColor } from "@/lib/utils";
+import { formatPhone, formatDate, getStatusBadgeVariant } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
@@ -161,7 +161,7 @@ export default function VolunteerProfilePage() {
                   <TableCell>{formatDate(a.drives?.drive_date)}</TableCell>
                   <TableCell>{a.duties?.name}</TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(a.status)}>
+                    <Badge variant={getStatusBadgeVariant(a.status).variant}>
                       {a.status.replace("_", " ")}
                     </Badge>
                   </TableCell>

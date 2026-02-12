@@ -140,7 +140,7 @@ export default function RemindersPage() {
                     />
                   </div>
                   {r.is_sent && (
-                    <Badge className="bg-green-100 text-green-800">Sent</Badge>
+                    <Badge variant="success">Sent</Badge>
                   )}
                 </div>
                 <Button

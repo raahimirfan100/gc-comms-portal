@@ -174,9 +174,7 @@ export default function VolunteersPage() {
                   </TableCell>
                   <TableCell>
                     {v.is_active ? (
-                      <Badge className="bg-green-100 text-green-800">
-                        Active
-                      </Badge>
+                      <Badge variant="success">Active</Badge>
                     ) : (
                       <Badge variant="secondary">Inactive</Badge>
                     )}

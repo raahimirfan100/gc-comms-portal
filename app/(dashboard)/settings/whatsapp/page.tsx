@@ -118,7 +118,7 @@ export default function WhatsAppSettingsPage() {
               <>
                 <Wifi className="h-6 w-6 text-green-500" />
                 <div>
-                  <Badge className="bg-green-100 text-green-800">Connected</Badge>
+                  <Badge variant="success">Connected</Badge>
                   {session.phone_number && (
                     <p className="text-sm text-muted-foreground mt-1">
                       {session.phone_number}
@@ -130,9 +130,7 @@ export default function WhatsAppSettingsPage() {
               <>
                 <QrCode className="h-6 w-6 text-yellow-500" />
                 <div>
-                  <Badge className="bg-yellow-100 text-yellow-800">
-                    QR Code Ready
-                  </Badge>
+                  <Badge variant="warning">QR Code Ready</Badge>
                   {session.qr_code && (
                     <div className="mt-4 rounded-md border p-4 bg-white">
                       <p className="text-sm text-muted-foreground mb-2">

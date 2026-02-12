@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         "id, name, drive_date, location_name, location_address, location_lat, location_lng, sunset_time, iftaar_time, notes",
       )
       .eq("season_id", season.id)
-      .in("status", ["open", "draft"])
+      .in("status", ["open", "in_progress"])
       .gte("drive_date", today)
       .order("drive_date", { ascending: true });
 

@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
+import { cn, formatDate, formatTime, getStatusBadgeVariant } from "@/lib/utils";
 import {
   MapPin,
   Calendar,
@@ -264,11 +264,11 @@ export default function DriveDetailPage() {
               {(() => {
                 const statusConfig = getStatusBadgeConfig(drive.status);
                 const StatusIcon = statusConfig.Icon;
+                const { variant } = getStatusBadgeVariant(drive.status);
                 return (
                   <Badge
-                    className={`flex items-center gap-1.5 border px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide ${statusConfig.borderClass} ${getStatusColor(
-                      drive.status,
-                    )}`}
+                    variant={variant}
+                    className="flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide"
                   >
                     <StatusIcon className={`h-3 w-3 ${statusConfig.iconClass}`} />
                     {statusConfig.label}
@@ -293,7 +293,7 @@ export default function DriveDetailPage() {
             )}
             {(drive.location_name || drive.location_address) && (
               <div className="flex flex-wrap items-center gap-3 pt-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-xs text-muted-foreground">
+                <div className="inline-flex items-center gap-2 rounded-full bg-muted/80 px-3 py-1 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" />
                   <span>
                     {drive.location_name}
@@ -306,7 +306,7 @@ export default function DriveDetailPage() {
           </div>
 
           <div className="grid gap-3 text-sm sm:grid-cols-3 md:text-xs lg:text-sm">
-            <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-3">
+            <div className="rounded-xl border border-border/60 bg-muted/60 px-3 py-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Date</span>
                 <Calendar className="h-3.5 w-3.5" />
@@ -320,7 +320,7 @@ export default function DriveDetailPage() {
                 </p>
               )}
             </div>
-            <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-3">
+            <div className="rounded-xl border border-border/60 bg-muted/60 px-3 py-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Volunteers</span>
                 <MapPin className="h-3.5 w-3.5" />
@@ -328,7 +328,7 @@ export default function DriveDetailPage() {
               <p className="mt-1 text-sm font-semibold">
                 {totalAssigned}/{totalCapacity}
               </p>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{ width: `${Math.min(volunteerFillPercent, 100)}%` }}
@@ -338,7 +338,7 @@ export default function DriveDetailPage() {
                 {volunteerFillPercent}% of capacity filled
               </p>
             </div>
-            <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-3">
+            <div className="rounded-xl border border-border/60 bg-muted/60 px-3 py-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Daigs</span>
                 <Utensils className="h-3.5 w-3.5" />
@@ -358,7 +358,7 @@ export default function DriveDetailPage() {
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Drive views
           </span>
-          <div className="flex flex-wrap gap-1.5 rounded-full bg-black/40 p-1">
+          <div className="flex flex-wrap gap-1.5 rounded-full bg-muted/80 p-1">
             <Button
               type="button"
               size="sm"
@@ -366,7 +366,7 @@ export default function DriveDetailPage() {
               className={`h-7 rounded-full px-3 text-xs font-medium ${
                 view === "overview"
                   ? ""
-                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+                  : "border-border/50 bg-background/50 hover:bg-muted/80 hover:border-border/60"
               }`}
               onClick={() => setView("overview")}
             >
@@ -379,7 +379,7 @@ export default function DriveDetailPage() {
               className={`h-7 rounded-full px-3 text-xs font-medium ${
                 view === "assignments"
                   ? ""
-                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+                  : "border-border/50 bg-background/50 hover:bg-muted/80 hover:border-border/60"
               }`}
               onClick={() => setView("assignments")}
             >
@@ -392,7 +392,7 @@ export default function DriveDetailPage() {
               className={`h-7 rounded-full px-3 text-xs font-medium ${
                 view === "live"
                   ? ""
-                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+                  : "border-border/50 bg-background/50 hover:bg-muted/80 hover:border-border/60"
               }`}
               onClick={() => setView("live")}
             >
@@ -405,7 +405,7 @@ export default function DriveDetailPage() {
               className={`h-7 rounded-full px-3 text-xs font-medium ${
                 view === "reminders"
                   ? ""
-                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+                  : "border-border/50 bg-background/50 hover:bg-muted/80 hover:border-border/60"
               }`}
               onClick={() => setView("reminders")}
             >
@@ -418,7 +418,7 @@ export default function DriveDetailPage() {
               className={`h-7 rounded-full px-3 text-xs font-medium ${
                 view === "calls"
                   ? ""
-                  : "border-border/40 bg-background/60 hover:bg-background/80 hover:border-border/60"
+                  : "border-border/50 bg-background/50 hover:bg-muted/80 hover:border-border/60"
               }`}
               onClick={() => setView("calls")}
             >
@@ -483,7 +483,7 @@ export default function DriveDetailPage() {
                   <CardTitle>Duty capacity</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {driveDuties.map((dd) => {
                       const capacity =
                         dd.manual_capacity_override ?? dd.calculated_capacity;
@@ -496,25 +496,31 @@ export default function DriveDetailPage() {
                       return (
                         <div
                           key={dd.id}
-                          className="stagger-item rounded-lg border border-border/60 bg-background/40 p-3"
+                          className="stagger-item flex flex-col gap-2 rounded-lg border border-border bg-muted/60 px-3 py-3"
                         >
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{duty?.name}</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-foreground">
+                                {duty?.name}
+                              </span>
                               {duty?.gender_restriction && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-dashed text-xs uppercase"
+                                <span
+                                  className={cn(
+                                    "rounded px-2 py-0.5 text-xs font-medium uppercase",
+                                    duty.gender_restriction === "male"
+                                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                  )}
                                 >
                                   {duty.gender_restriction}
-                                </Badge>
+                                </span>
                               )}
                             </div>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-sm text-muted-foreground tabular-nums">
                               {dd.current_assigned}/{capacity}
                             </span>
                           </div>
-                          <div className="mt-2 h-1.5 rounded-full bg-secondary">
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                             <div
                               className="h-full rounded-full bg-primary transition-all"
                               style={{ width: `${Math.min(pct, 100)}%` }}
