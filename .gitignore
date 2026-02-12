@@ -35,6 +35,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# MCP config may contain project identifiers; keep local only for public repos
+.mcp.json
+
 # vercel
 .vercel
 
