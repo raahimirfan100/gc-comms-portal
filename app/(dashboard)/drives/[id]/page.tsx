@@ -584,15 +584,15 @@ export default function DriveDetailPage() {
 
       {/* Delete Drive Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={(open) => { if (!open) { setDeleteOpen(false); setDeleteInfo(null); } }}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
             <DialogTitle>Delete Drive</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete <strong>{drive.name}</strong>? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {deleteInfo && (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 overflow-y-auto px-6 py-2 text-sm min-h-0 flex-1">
               {deleteInfo.assignmentCount > 0 && (
                 <p className="text-destructive">
                   {deleteInfo.assignmentCount} volunteer assignment{deleteInfo.assignmentCount !== 1 ? "s" : ""} will be removed.
@@ -608,7 +608,7 @@ export default function DriveDetailPage() {
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="shrink-0 px-6 pb-6 pt-2">
             <Button variant="outline" onClick={() => { setDeleteOpen(false); setDeleteInfo(null); }}>
               Cancel
             </Button>

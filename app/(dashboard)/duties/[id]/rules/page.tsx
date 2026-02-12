@@ -282,7 +282,7 @@ export default function DutyCapacityRulesPage() {
           <CardTitle>Preview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-5 gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3 md:grid-cols-5">
             {[5, 10, 15, 20, 30].map((daigs) => (
               <div
                 key={daigs}

@@ -227,13 +227,13 @@ export default function DutiesPage() {
               Add Duty
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <form onSubmit={handleCreateDuty}>
-              <DialogHeader>
+          <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
+            <form onSubmit={handleCreateDuty} className="flex min-h-0 flex-col">
+              <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
                 <DialogTitle>Create Duty</DialogTitle>
                 <DialogDescription>Add a new duty type</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 overflow-y-auto px-6 py-4 min-h-0 flex-1">
                 <div className="space-y-2">
                   <Label htmlFor="duty-name">Name</Label>
                   <Input
@@ -295,7 +295,7 @@ export default function DutiesPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="shrink-0 px-6 pb-6 pt-2">
                 <Button type="submit" disabled={saving}>
                   {saving && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -404,16 +404,16 @@ export default function DutiesPage() {
       </div>
 
       <Dialog open={!!editDuty} onOpenChange={(open) => !open && setEditDuty(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
           {editDuty && (
-            <form onSubmit={handleUpdateDuty}>
-              <DialogHeader>
+            <form onSubmit={handleUpdateDuty} className="flex min-h-0 flex-col">
+              <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
                 <DialogTitle>Edit Duty</DialogTitle>
                 <DialogDescription>
                   Update name, slug, gender, and display order. Changing slug may require updating Settings → Assignment priority order.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 overflow-y-auto px-6 py-4 min-h-0 flex-1">
                 <div className="space-y-2">
                   <Label htmlFor="edit-name">Name</Label>
                   <Input
@@ -474,7 +474,7 @@ export default function DutiesPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="shrink-0 px-6 pb-6 pt-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -502,16 +502,16 @@ export default function DutiesPage() {
       />
 
       <Dialog open={!!deleteDuty} onOpenChange={(open) => !open && setDeleteDuty(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
           {deleteDuty && (
             <>
-              <DialogHeader>
+              <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
                 <DialogTitle>Delete duty</DialogTitle>
                 <DialogDescription>
                   Delete &quot;{deleteDuty.name}&quot;? This will remove this duty from all drives and assignments. This cannot be undone.
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter>
+              <DialogFooter className="shrink-0 px-6 pb-6 pt-2">
                 <Button
                   variant="outline"
                   onClick={() => setDeleteDuty(null)}

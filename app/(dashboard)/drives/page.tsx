@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -20,6 +20,8 @@ import {
   XCircle,
   Users,
   Sun,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { formatDate, formatTime, getStatusColor } from "@/lib/utils";
 import { checkAndUpdateDriveStatuses } from "./actions";
@@ -33,6 +35,14 @@ const LocationMap = dynamic(
 );
 
 type DriveStatus = "draft" | "open" | "in_progress" | "completed" | "cancelled";
+
+const DRIVE_STATUS_ORDER: DriveStatus[] = [
+  "in_progress",
+  "open",
+  "draft",
+  "completed",
+  "cancelled",
+];
 
 function getStatusBadgeConfig(status: string): {
   label: string;
@@ -91,6 +101,146 @@ function getStatusBadgeConfig(status: string): {
   );
 }
 
+function getSectionTitle(status: DriveStatus): string {
+  const titles: Record<DriveStatus, string> = {
+    in_progress: "In progress",
+    open: "Scheduled",
+    draft: "Draft",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
+  return titles[status] ?? status.replace("_", " ");
+}
+
+const MOBILE_CARD_WIDTH_FALLBACK = 280;
+
+function ScrollableSection({
+  children,
+  title,
+  icon: Icon,
+  iconClass,
+  count,
+}: {
+  children: React.ReactNode;
+  title: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  iconClass: string;
+  count: number;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(MOBILE_CARD_WIDTH_FALLBACK);
+
+  const checkScrollability = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setCanScrollLeft(scrollLeft > 1);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+  };
+
+  useEffect(() => {
+    const scrollElement = scrollRef.current;
+    if (!scrollElement) return;
+
+    const updateWidth = () => {
+      const w = scrollElement.clientWidth;
+      if (w > 0) setContainerWidth(w);
+    };
+
+    updateWidth();
+    scrollElement.scrollLeft = 0;
+    checkScrollability();
+
+    scrollElement.addEventListener("scroll", checkScrollability);
+    const resizeObserver = new ResizeObserver(() => {
+      updateWidth();
+      checkScrollability();
+    });
+    resizeObserver.observe(scrollElement);
+
+    return () => {
+      scrollElement.removeEventListener("scroll", checkScrollability);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const scroll = (direction: "left" | "right") => {
+    if (!scrollRef.current) return;
+    const scrollAmount = scrollRef.current.clientWidth * 0.8;
+    scrollRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <Icon className={`h-5 w-5 ${iconClass}`} />
+          {title}
+          <span className="text-muted-foreground font-normal">({count})</span>
+        </h2>
+        {(canScrollLeft || canScrollRight) && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => scroll("left")}
+              disabled={!canScrollLeft}
+              className={`flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
+                canScrollLeft
+                  ? "border-border bg-background hover:bg-accent cursor-pointer"
+                  : "border-border/50 bg-background/50 cursor-not-allowed opacity-50"
+              }`}
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => scroll("right")}
+              disabled={!canScrollRight}
+              className={`flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
+                canScrollRight
+                  ? "border-border bg-background hover:bg-accent cursor-pointer"
+                  : "border-border/50 bg-background/50 cursor-not-allowed opacity-50"
+              }`}
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide snap-x snap-mandatory md:snap-none"
+        style={
+          {
+            "--section-card-width": `${containerWidth}px`,
+          } as React.CSSProperties
+        }
+        onWheel={(e) => {
+          if (e.shiftKey && scrollRef.current) {
+            e.preventDefault();
+            scrollRef.current.scrollLeft += e.deltaY;
+          }
+        }}
+      >
+        <div className="flex gap-4 min-w-0" style={{ width: "max-content" }}>
+          {React.Children.map(children, (child, index) => (
+            <div
+              key={(child as React.ReactElement)?.key ?? index}
+              className="shrink-0 w-[var(--section-card-width)] min-w-[var(--section-card-width)] snap-start [scroll-snap-stop:always] md:w-auto md:min-w-0 md:[scroll-snap-align:unset] md:[scroll-snap-stop:normal]"
+            >
+              {child}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 type DriveWithDuties = {
   id: string;
   name: string;
@@ -115,6 +265,21 @@ export default function DrivesPage() {
   const [drives, setDrives] = useState<DriveWithDuties[]>([]);
   const [loading, setLoading] = useState(true);
   const [noSeason, setNoSeason] = useState(false);
+
+  const drivesByStatus = useMemo(() => {
+    const map: Record<DriveStatus, DriveWithDuties[]> = {
+      in_progress: [],
+      open: [],
+      draft: [],
+      completed: [],
+      cancelled: [],
+    };
+    for (const drive of drives) {
+      const s = drive.status as DriveStatus;
+      if (map[s]) map[s].push(drive);
+    }
+    return map;
+  }, [drives]);
 
   useEffect(() => {
     async function load() {
@@ -211,8 +376,23 @@ export default function DrivesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {drives.map((drive) => {
+        <div className="space-y-8">
+          {DRIVE_STATUS_ORDER.map((status) => {
+            const list = drivesByStatus[status];
+            if (!list.length) return null;
+
+            const sectionConfig = getStatusBadgeConfig(status);
+            const SectionIcon = sectionConfig.Icon;
+
+            return (
+              <ScrollableSection
+                key={status}
+                title={getSectionTitle(status)}
+                icon={SectionIcon}
+                iconClass={sectionConfig.iconClass}
+                count={list.length}
+              >
+                {list.map((drive) => {
             const totalCapacity =
               drive.drive_duties?.reduce(
                 (sum, dd) =>
@@ -245,9 +425,13 @@ export default function DrivesPage() {
             const isCompleted = drive.status === "completed";
 
             return (
-              <Link key={drive.id} href={`/drives/${drive.id}`}>
+              <Link
+                key={drive.id}
+                href={`/drives/${drive.id}`}
+                className="block w-full shrink-0 md:w-[380px] md:min-w-[380px] lg:min-w-[400px] lg:w-[400px]"
+              >
                 <Card
-                  className={`stagger-item group cursor-pointer overflow-hidden rounded-2xl border shadow-sm transition-all ${
+                  className={`stagger-item group cursor-pointer overflow-hidden rounded-2xl border shadow-sm transition-all h-full ${
                     isInProgress
                       ? "border-sky-500/60 bg-sky-500/5 hover:border-sky-500/80 hover:shadow-lg hover:shadow-sky-500/20"
                       : isCompleted
@@ -277,7 +461,7 @@ export default function DrivesPage() {
 
                     <div className="space-y-2 p-3">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1">
+                        <div className="space-y-1 min-w-0">
                           <CardTitle className="line-clamp-1 text-base font-semibold leading-tight">
                             {drive.name}
                           </CardTitle>
@@ -367,6 +551,9 @@ export default function DrivesPage() {
                   </CardContent>
                 </Card>
               </Link>
+                );
+              })}
+              </ScrollableSection>
             );
           })}
         </div>

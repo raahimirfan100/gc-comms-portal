@@ -120,20 +120,21 @@ export function DutyRulesModal({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] flex flex-col max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-h-[90vh] flex flex-col max-w-2xl p-0 gap-0">
+        <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
           <DialogTitle>Capacity rules: {dutyName ?? "Duty"}</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground -mt-2">
+        <p className="text-sm text-muted-foreground shrink-0 px-6 -mt-2 pb-2">
           Configure how volunteer capacity is calculated from daig count
         </p>
         {loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex flex-1 min-h-0 items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : (
-          <ScrollArea className="flex-1 pr-4 -mr-4 min-h-0">
-            <div className="pb-4">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ScrollArea className="h-full pr-4 -mr-4">
+            <div className="pb-4 px-6">
               {linearRule && (
                 <>
                   <section className="py-4">
@@ -300,7 +301,8 @@ export function DutyRulesModal({
                 </div>
               </section>
             </div>
-          </ScrollArea>
+            </ScrollArea>
+          </div>
         )}
       </DialogContent>
     </Dialog>

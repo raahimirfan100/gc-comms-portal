@@ -308,11 +308,11 @@ export default function AssignmentsPage() {
 
   return (
     <div className="space-y-4 page-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Duty Board</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={openCapacityModal} variant="outline">
             <Settings className="mr-2 h-4 w-4" />
             Edit Capacities
@@ -427,11 +427,11 @@ export default function AssignmentsPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
             <DialogTitle>Edit Duty Capacities</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto px-6 py-4 min-h-0 flex-1">
             <p className="text-sm text-muted-foreground">
               Adjust the maximum number of volunteers for each duty on this
               drive. Leave a field empty or set it to the system default to use
@@ -492,7 +492,7 @@ export default function AssignmentsPage() {
               })}
             </div>
           </div>
-          <DialogFooter className="flex justify-between gap-2">
+          <DialogFooter className="shrink-0 flex justify-between gap-2 px-6 pb-6 pt-2">
             <Button
               type="button"
               variant="outline"

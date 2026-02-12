@@ -97,7 +97,7 @@ export default function VolunteerProfilePage() {
     <div className="space-y-6 page-fade-in">
       <div>
         <h1 className="text-2xl font-bold">{volunteer.name}</h1>
-        <div className="mt-1 flex items-center gap-3 text-muted-foreground">
+        <div className="mt-1 flex flex-wrap items-center gap-3 text-muted-foreground">
           <span className="font-mono">{formatPhone(volunteer.phone)}</span>
           <Badge variant="outline">{volunteer.gender}</Badge>
           {volunteer.organization && <span>{volunteer.organization}</span>}
@@ -107,7 +107,7 @@ export default function VolunteerProfilePage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Total Drives</p>

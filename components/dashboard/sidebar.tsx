@@ -9,11 +9,13 @@ import {
   ClipboardList,
   BarChart3,
   Settings,
-  Megaphone,
   ChevronDown,
   Moon,
   MoonStar,
+  LogOut,
 } from "lucide-react";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+import { LogoutButton } from "@/components/logout-button";
 
 const navigation = [
   { name: "Seasons", href: "/seasons", icon: MoonStar },
@@ -133,6 +135,16 @@ export function MobileSidebar({
   return (
     <div className="flex h-full flex-col border-r bg-card">
       <SidebarInner onNavigate={onNavigate} />
+      <div className="mt-auto flex items-center justify-between border-t p-3">
+        <LogoutButton
+          variant="ghost"
+          size="icon"
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
+          <LogOut className="h-4 w-4" />
+        </LogoutButton>
+        <ThemeSwitcher />
+      </div>
     </div>
   );
 }

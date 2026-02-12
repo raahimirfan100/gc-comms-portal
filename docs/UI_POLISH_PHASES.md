@@ -700,7 +700,6 @@ Enhance empty states, error states, and user feedback with animations and visual
 
 2. **Error States**
    - Add smooth error message animations
-   - Add shake animations for form errors
    - Enhance error display
 
 3. **Success States**
@@ -709,7 +708,7 @@ Enhance empty states, error states, and user feedback with animations and visual
    - Enhance success feedback
 
 4. **Toast Notifications**
-   - Enhance toast animations (already has some)
+   - Enhance toast animations
    - Add progress bar animations
    - Add icon animations
 

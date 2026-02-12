@@ -345,15 +345,15 @@ export default function SeasonsPage() {
                   New Season
                 </Button>
               </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleCreateSeason}>
-                  <DialogHeader>
+              <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
+                <form onSubmit={handleCreateSeason} className="flex min-h-0 flex-col">
+                  <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
                     <DialogTitle>Create Season</DialogTitle>
                     <DialogDescription>
                       Add a new Ramadan season
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
+                  <div className="space-y-4 overflow-y-auto px-6 py-4 min-h-0 flex-1">
                     {/* Gregorian Year with Hijri adornment */}
                     <FormField
                       label="Gregorian Year"
@@ -434,7 +434,7 @@ export default function SeasonsPage() {
                     </div>
 
                   </div>
-                  <DialogFooter>
+                  <DialogFooter className="shrink-0 px-6 pb-6 pt-2">
                     <Button type="submit" disabled={saving}>
                       {saving && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -551,13 +551,13 @@ export default function SeasonsPage() {
           if (!open) setEditTarget(null);
         }}
       >
-        <DialogContent>
-          <form onSubmit={handleEditSeason}>
-            <DialogHeader>
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
+          <form onSubmit={handleEditSeason} className="flex min-h-0 flex-col">
+            <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
               <DialogTitle>Edit Season</DialogTitle>
               <DialogDescription>Update season details</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 overflow-y-auto px-6 py-4 min-h-0 flex-1">
               {/* Name */}
               <FormField label="Season Name" htmlFor="edit_name" required>
                 <Input
@@ -630,7 +630,7 @@ export default function SeasonsPage() {
               </div>
 
             </div>
-            <DialogFooter>
+            <DialogFooter className="shrink-0 px-6 pb-6 pt-2">
               <Button
                 variant="outline"
                 type="button"
@@ -658,8 +658,8 @@ export default function SeasonsPage() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
             <DialogTitle>Switch active season</DialogTitle>
             <DialogDescription>
               Switch active season to{" "}
@@ -669,7 +669,7 @@ export default function SeasonsPage() {
               will be associated with this season.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 px-6 pb-6 pt-2">
             <Button
               variant="outline"
               onClick={() => setActivateTarget(null)}
@@ -700,8 +700,8 @@ export default function SeasonsPage() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="shrink-0 px-6 pr-10 pt-6 pb-2">
             <DialogTitle>Delete Season</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete{" "}
@@ -710,7 +710,7 @@ export default function SeasonsPage() {
             </DialogDescription>
           </DialogHeader>
           {deleteInfo && (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 overflow-y-auto px-6 py-2 text-sm min-h-0 flex-1">
               {deleteInfo.driveCount > 0 && (
                 <p className="text-destructive">
                   {deleteInfo.driveCount} drive
@@ -731,7 +731,7 @@ export default function SeasonsPage() {
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="shrink-0 px-6 pb-6 pt-2">
             <Button
               variant="outline"
               onClick={() => {
