@@ -50,8 +50,8 @@ export default function AlertSettingsPage() {
 
   if (loading || !config) {
     return (
-      <div className="space-y-6 page-fade-in">
-        <div className="space-y-2">
+      <div className="space-y-8 page-fade-in max-w-4xl">
+        <div className="space-y-1">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-64" />
         </div>
@@ -61,9 +61,9 @@ export default function AlertSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 page-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold">Alert Settings</h1>
+    <div className="space-y-8 page-fade-in max-w-4xl">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Alert Settings</h1>
         <p className="text-muted-foreground">
           Configure when alerts fire on the live dashboard
         </p>
@@ -110,10 +110,12 @@ export default function AlertSettingsPage() {
         </CardContent>
       </Card>
 
-      <Button onClick={save} disabled={saving}>
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Save Settings
-      </Button>
+      <div className="border-t border-border pt-6">
+        <Button onClick={save} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Settings
+        </Button>
+      </div>
     </div>
   );
 }

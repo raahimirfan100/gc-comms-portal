@@ -89,8 +89,8 @@ export default function WhatsAppSettingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 page-fade-in">
-        <div className="space-y-2">
+      <div className="space-y-8 page-fade-in max-w-4xl">
+        <div className="space-y-1">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-64" />
         </div>
@@ -100,9 +100,9 @@ export default function WhatsAppSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 page-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold">WhatsApp Settings</h1>
+    <div className="space-y-8 page-fade-in max-w-4xl">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">WhatsApp Settings</h1>
         <p className="text-muted-foreground">
           Manage Baileys WhatsApp connection and messaging
         </p>
@@ -111,8 +111,11 @@ export default function WhatsAppSettingsPage() {
       <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Connection Status</CardTitle>
+          <CardDescription>
+            WhatsApp Baileys session and QR pairing for sending messages
+          </CardDescription>
         </CardHeader>
-          <CardContent>
+        <CardContent>
           <div className="flex items-center gap-4">
             {session?.status === "connected" ? (
               <>
@@ -213,7 +216,7 @@ export default function WhatsAppSettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="stagger-item">
             <CardHeader>
               <CardTitle>Keyword Detection</CardTitle>
               <CardDescription>
@@ -254,10 +257,12 @@ export default function WhatsAppSettingsPage() {
             </CardContent>
           </Card>
 
-          <Button onClick={save} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Settings
-          </Button>
+          <div className="border-t border-border pt-6">
+            <Button onClick={save} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Settings
+            </Button>
+          </div>
         </>
       )}
     </div>

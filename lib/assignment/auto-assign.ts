@@ -3,6 +3,45 @@ import type { Database } from "@/lib/supabase/types";
 
 type SupabaseClient = ReturnType<typeof createSupabaseClient<Database>>;
 
+/** One entry from Settings → Priority numbers (app_config key: priority_duty_entries). */
+export interface PriorityDutyEntry {
+  id: string;
+  phone_digits: string;
+  name: string;
+  duty_slug: string;
+  overflow_behavior: "unassign_one" | "reassign_to_duty" | "allow_overflow";
+  reassign_duty_slug?: string | null;
+}
+
+function normalizePhone(phone: string | null | undefined): string {
+  if (!phone) return "";
+  return phone.replace(/\D/g, "").replace(/^0+/, "") || "";
+}
+
+/** Canonical form for comparison: strip leading 92 (Pakistan) or 1 (US) so stored +92XXXXXXXXXX matches list entry XXXXXXXXXX. */
+function canonicalDigits(digits: string): string {
+  if (digits.length === 12 && digits.startsWith("92")) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("1")) return digits.slice(1);
+  return digits;
+}
+
+function findPriorityEntry(
+  phone: string | null | undefined,
+  entries: PriorityDutyEntry[],
+): PriorityDutyEntry | undefined {
+  const digits = normalizePhone(phone);
+  if (!digits.length || !entries.length) return undefined;
+  const canonical = canonicalDigits(digits);
+  return entries.find((e) => {
+    const entryCanonical = canonicalDigits(e.phone_digits);
+    return (
+      canonical === entryCanonical ||
+      canonical.endsWith(entryCanonical) ||
+      entryCanonical.endsWith(canonical)
+    );
+  });
+}
+
 interface AssignmentResult {
   volunteerId: string;
   driveId: string;
@@ -44,7 +83,7 @@ export async function autoAssignVolunteer(
   // Get volunteer info
   const { data: volunteer } = await supabase
     .from("volunteers")
-    .select("id, gender")
+    .select("id, gender, phone")
     .eq("id", volunteerId)
     .single();
 
@@ -71,6 +110,30 @@ export async function autoAssignVolunteer(
     female_priority_order?: string[];
     waitlist_auto_fill?: boolean;
   }) || {};
+
+  // Priority duty entries (Settings → Priority numbers)
+  const { data: priorityEntriesRow } = await supabase
+    .from("app_config")
+    .select("value")
+    .eq("key", "priority_duty_entries")
+    .maybeSingle();
+
+  let priorityEntries: PriorityDutyEntry[] = [];
+  if (priorityEntriesRow?.value != null) {
+    const raw = priorityEntriesRow.value;
+    priorityEntries = Array.isArray(raw)
+      ? raw
+      : typeof raw === "string"
+        ? (() => {
+            try {
+              const parsed = JSON.parse(raw) as unknown;
+              return Array.isArray(parsed) ? parsed : [];
+            } catch {
+              return [];
+            }
+          })()
+        : [];
+  }
 
   // Get volunteer's duty history
   const { data: history } = await supabase
@@ -115,6 +178,90 @@ export async function autoAssignVolunteer(
       dutyName: dd.duties?.name || "Unknown",
       status: "assigned",
     };
+  }
+
+  // Helper: assign to a duty ignoring capacity (used for daig priority phones)
+  async function tryAssignAllowOverflow(
+    dd: DriveDutyWithDetails,
+  ): Promise<AssignmentResult | null> {
+    if (!genderAllowed(dd)) return null;
+
+    const { error } = await supabase.from("assignments").insert({
+      volunteer_id: volunteerId,
+      drive_id: driveId,
+      duty_id: dd.duty_id,
+      status: "assigned",
+      assigned_by: assignedBy,
+    });
+
+    if (error) return null;
+
+    return {
+      volunteerId,
+      driveId,
+      dutyId: dd.duty_id,
+      dutyName: dd.duties?.name || "Unknown",
+      status: "assigned",
+    };
+  }
+
+  // Step 0: Priority duty entries (Settings → Priority numbers) — assign to configured duty, apply overflow behavior
+  const priorityEntry = findPriorityEntry(
+    (volunteer as { phone?: string }).phone,
+    priorityEntries,
+  );
+  if (priorityEntry) {
+    const priorityDuty = driveDuties.find(
+      (d) => d.duties?.slug === priorityEntry.duty_slug,
+    ) as DriveDutyWithDetails | undefined;
+    if (priorityDuty) {
+      const result = await tryAssignAllowOverflow(priorityDuty);
+      if (result) {
+        if (priorityEntry.overflow_behavior === "allow_overflow") {
+          return result;
+        }
+        // unassign_one or reassign_to_duty: free one slot by moving one volunteer
+        const { data: otherAssignments } = await supabase
+          .from("assignments")
+          .select("id, volunteer_id")
+          .eq("drive_id", driveId)
+          .eq("duty_id", priorityDuty.duty_id)
+          .neq("volunteer_id", volunteerId)
+          .limit(1);
+
+        if (otherAssignments?.length) {
+          const row = otherAssignments[0];
+          await supabase.from("assignments").delete().eq("id", row.id);
+          if (priorityEntry.overflow_behavior === "reassign_to_duty" && priorityEntry.reassign_duty_slug) {
+            const targetDd = driveDuties.find(
+              (d) => d.duties?.slug === priorityEntry.reassign_duty_slug,
+            ) as DriveDutyWithDetails | undefined;
+            const { data: displacedVol } = await supabase
+              .from("volunteers")
+              .select("gender")
+              .eq("id", row.volunteer_id)
+              .single();
+            const displacedGenderAllowed =
+              !targetDd?.duties?.gender_restriction ||
+              targetDd.duties.gender_restriction === displacedVol?.gender;
+            if (targetDd && hasCapacity(targetDd) && displacedGenderAllowed) {
+              await supabase.from("assignments").insert({
+                volunteer_id: row.volunteer_id,
+                drive_id: driveId,
+                duty_id: targetDd.duty_id,
+                status: "assigned",
+                assigned_by: assignedBy,
+              });
+            } else {
+              await autoAssignVolunteer(supabase, row.volunteer_id, driveId, assignedBy);
+            }
+          } else {
+            await autoAssignVolunteer(supabase, row.volunteer_id, driveId, assignedBy);
+          }
+        }
+        return result;
+      }
+    }
   }
 
   // Step 1: If repeat volunteer, try past duties by frequency

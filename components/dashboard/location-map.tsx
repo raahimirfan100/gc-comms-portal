@@ -12,6 +12,8 @@ type LocationMapProps = {
   className?: string;
   /** When true, uses compact height and hides address text (e.g. for cards) */
   compact?: boolean;
+  /** When true, hides the "Selected location" line (e.g. when parent shows address) */
+  hideAddressText?: boolean;
 };
 
 const KARACHI_CENTER = { lat: 24.8607, lng: 67.0011 };
@@ -23,6 +25,7 @@ export function LocationMap({
   readOnly = false,
   className = "",
   compact = false,
+  hideAddressText = false,
 }: LocationMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -198,7 +201,7 @@ export function LocationMap({
             </button>
           )}
         </div>
-        {hasLocation && !compact && (
+        {hasLocation && !compact && !hideAddressText && (
           <p className="mt-2 text-xs text-muted-foreground">
             Selected location:{" "}
             {resolvedAddress ?? `${lat?.toFixed(5)}, ${lng?.toFixed(5)}`}

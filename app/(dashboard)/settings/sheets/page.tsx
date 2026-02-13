@@ -67,8 +67,8 @@ export default function SheetsSettingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 page-fade-in">
-        <div className="space-y-2">
+      <div className="space-y-8 page-fade-in max-w-4xl">
+        <div className="space-y-1">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-64" />
         </div>
@@ -78,9 +78,9 @@ export default function SheetsSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 page-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold">Google Sheets Sync</h1>
+    <div className="space-y-8 page-fade-in max-w-4xl">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Google Sheets Sync</h1>
         <p className="text-muted-foreground">
           Configure Google Form response sheets for volunteer signup sync
         </p>
@@ -168,9 +168,11 @@ export default function SheetsSettingsPage() {
           </Card>
         ))}
         {syncs.length === 0 && (
-          <p className="text-center text-muted-foreground py-4">
-            No sheets configured
-          </p>
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 py-10 text-center">
+            <p className="text-muted-foreground text-sm">
+              No sheets configured. Add a sheet above to sync volunteer signups from Google Forms.
+            </p>
+          </div>
         )}
       </div>
     </div>

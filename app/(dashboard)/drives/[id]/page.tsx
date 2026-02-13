@@ -32,6 +32,8 @@ import {
   XCircle,
   Users,
   Pencil,
+  ExternalLink,
+  LayoutGrid,
 } from "lucide-react";
 import { DriveStatusControl } from "./drive-status-control";
 import { deleteDrive } from "../actions";
@@ -479,11 +481,30 @@ export default function DriveDetailPage() {
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)]">
             <div className="space-y-4">
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle>Duty capacity</CardTitle>
+                <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-0 pt-4 sm:pt-6">
+                  <CardTitle className="text-base">Duty capacity</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="flex items-center gap-1.5 text-sm font-semibold tabular-nums text-foreground"
+                      title={`${totalAssigned} of ${totalCapacity} slots filled`}
+                    >
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      {totalAssigned}/{totalCapacity}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg border border-border/60 bg-muted/40 px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                      onClick={() => setView("assignments")}
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      Manage
+                    </Button>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="space-y-2.5 pt-0">
+                  <div className="space-y-2.5 [list-style:none]">
                     {driveDuties.map((dd) => {
                       const capacity =
                         dd.manual_capacity_override ?? dd.calculated_capacity;
@@ -492,11 +513,13 @@ export default function DriveDetailPage() {
                           ? Math.round((dd.current_assigned / capacity) * 100)
                           : 0;
                       const duty = dd.duties;
+                      const isFull = pct >= 100;
+                      const isEmpty = pct === 0;
 
                       return (
                         <div
                           key={dd.id}
-                          className="stagger-item flex flex-col gap-2 rounded-lg border border-border bg-muted/60 px-3 py-3"
+                          className="stagger-item flex flex-col gap-2 rounded-lg border border-border bg-muted/60 px-3 py-3 transition-all duration-200 hover:bg-muted/80"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex flex-wrap items-center gap-2">
@@ -516,13 +539,18 @@ export default function DriveDetailPage() {
                                 </span>
                               )}
                             </div>
-                            <span className="text-sm text-muted-foreground tabular-nums">
+                            <span className="text-sm tabular-nums text-muted-foreground">
                               {dd.current_assigned}/{capacity}
                             </span>
                           </div>
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                             <div
-                              className="h-full rounded-full bg-primary transition-all"
+                              className={cn(
+                                "h-full rounded-full transition-all duration-500 ease-out",
+                                isFull && "bg-emerald-500 dark:bg-emerald-500/90",
+                                !isFull && !isEmpty && "bg-primary",
+                                isEmpty && "bg-muted-foreground/30"
+                              )}
                               style={{ width: `${Math.min(pct, 100)}%` }}
                             />
                           </div>
@@ -538,24 +566,43 @@ export default function DriveDetailPage() {
               {typeof drive.location_lat === "number" &&
                 typeof drive.location_lng === "number" && (
                   <Card className="overflow-hidden">
-                    <CardHeader className="pb-3">
-                      <CardTitle>Drive location</CardTitle>
-                      {(drive.location_name || drive.location_address) && (
-                        <p className="text-sm text-muted-foreground">
-                          {drive.location_name}
-                          {drive.location_address &&
-                            ` — ${drive.location_address}`}
-                        </p>
-                      )}
+                    <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-0 pt-4 sm:pt-6">
+                      <CardTitle className="text-base">Drive location</CardTitle>
+                      <a
+                        href={`https://www.google.com/maps?q=${encodeURIComponent(
+                          `${drive.location_lat},${drive.location_lng}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/40 px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/80 hover:text-foreground"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Open in Google Maps
+                      </a>
                     </CardHeader>
-                    <CardContent>
-                      <div className="overflow-hidden rounded-xl border bg-muted/40">
+                    <CardContent className="space-y-3 pt-0">
+                      <div className="overflow-hidden rounded-xl border border-border/80 bg-muted/40">
                         <LocationMap
                           lat={drive.location_lat}
                           lng={drive.location_lng}
                           readOnly
+                          hideAddressText
                         />
                       </div>
+                      {(drive.location_name || drive.location_address) && (
+                        <div className="space-y-1">
+                          {drive.location_name &&
+                            drive.location_address &&
+                            drive.location_name !== drive.location_address && (
+                              <p className="text-xs font-medium text-muted-foreground/90">
+                                {drive.location_name}
+                              </p>
+                            )}
+                          <p className="text-sm text-muted-foreground">
+                            {drive.location_address ?? drive.location_name}
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}

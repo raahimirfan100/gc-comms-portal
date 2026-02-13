@@ -79,7 +79,7 @@ export default function ReminderSettingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 page-fade-in">
+      <div className="space-y-8 page-fade-in max-w-4xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <Skeleton className="h-8 w-48" />
@@ -97,10 +97,10 @@ export default function ReminderSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 page-fade-in">
+    <div className="space-y-8 page-fade-in max-w-4xl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Default Reminders</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Default Reminders</h1>
           <p className="text-muted-foreground">
             Default templates applied to new drives. Variables: {"{name}"},{" "}
             {"{duty}"}, {"{drive_name}"}, {"{sunset_time}"}, {"{location}"}
@@ -163,10 +163,12 @@ export default function ReminderSettingsPage() {
         ))}
       </div>
 
-      <Button onClick={save} disabled={saving}>
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Save Defaults
-      </Button>
+      <div className="border-t border-border pt-6">
+        <Button onClick={save} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Defaults
+        </Button>
+      </div>
     </div>
   );
 }
