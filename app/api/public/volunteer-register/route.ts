@@ -106,6 +106,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Fire-and-forget: add volunteer to WhatsApp group + announce
+    addToWhatsAppGroup(normalizedPhone, name.trim(), assignments).catch((err) =>
+      console.error("[volunteer-register] WhatsApp group add failed:", err),
+    );
+
     return NextResponse.json({
       volunteerId: volunteerRow.id,
       assignments,
@@ -122,5 +127,34 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+async function addToWhatsAppGroup(
+  phone: string,
+  name: string,
+  assignments: Array<{ drive: string; duty: string }>,
+) {
+  const railwayUrl = process.env.RAILWAY_SERVICE_URL;
+  const railwaySecret = process.env.RAILWAY_API_SECRET;
+  if (!railwayUrl || !railwaySecret) return;
+
+  const supabase = createAdminClient();
+  const { data: config } = await supabase
+    .from("app_config")
+    .select("value")
+    .eq("key", "whatsapp")
+    .single();
+
+  const groupJid = (config?.value as any)?.volunteer_group_jid;
+  if (!groupJid) return;
+
+  await fetch(`${railwayUrl}/api/whatsapp/group/add`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${railwaySecret}`,
+    },
+    body: JSON.stringify({ phone, groupJid, name, assignments }),
+  });
 }
 

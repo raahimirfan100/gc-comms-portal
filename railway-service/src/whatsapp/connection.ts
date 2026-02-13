@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import qrcode from "qrcode-terminal";
 
 // Rate-limited message queue
 interface QueuedMessage {
@@ -37,7 +38,6 @@ export class WhatsAppManager {
 
       this.sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true,
       });
 
       this.sock.ev.on("creds.update", saveCreds);
@@ -47,6 +47,9 @@ export class WhatsAppManager {
 
         if (qr) {
           this.status = "qr_pending";
+          // Print QR in terminal for scanning
+          console.log("\n📱 Scan this QR code with WhatsApp:\n");
+          qrcode.generate(qr, { small: true });
           // Store QR in database for admin panel display
           await this.supabase
             .from("whatsapp_sessions")
@@ -80,7 +83,7 @@ export class WhatsAppManager {
               },
               { onConflict: "id" },
             );
-          console.log("WhatsApp connected:", phoneNumber);
+          console.log("✅ WhatsApp connected:", phoneNumber);
         }
       });
 
@@ -149,10 +152,34 @@ export class WhatsAppManager {
     this.processing = false;
   }
 
-  async addToGroup(phone: string, groupJid: string): Promise<void> {
+  async addToGroup(phone: string, groupJid: string): Promise<{ added: boolean }> {
     if (!this.sock) throw new Error("WhatsApp not connected");
     const jid = phone.replace("+", "") + "@s.whatsapp.net";
-    await this.sock.groupParticipantsUpdate(groupJid, [jid], "add");
+    try {
+      await this.sock.groupParticipantsUpdate(groupJid, [jid], "add");
+      return { added: true };
+    } catch {
+      return { added: false };
+    }
+  }
+
+  async sendGroupMessage(groupJid: string, message: string): Promise<void> {
+    if (!this.sock) throw new Error("WhatsApp not connected");
+    await this.sock.sendMessage(groupJid, { text: message });
+  }
+
+  async getGroupInviteCode(groupJid: string): Promise<string | undefined> {
+    if (!this.sock) throw new Error("WhatsApp not connected");
+    return this.sock.groupInviteCode(groupJid);
+  }
+
+  async listGroups(): Promise<{ id: string; subject: string }[]> {
+    if (!this.sock) throw new Error("WhatsApp not connected");
+    const groups = await this.sock.groupFetchAllParticipating();
+    return Object.values(groups).map((g: any) => ({
+      id: g.id,
+      subject: g.subject,
+    }));
   }
 
   private async handleIncomingMessage(msg: any): Promise<void> {
