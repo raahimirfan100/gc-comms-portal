@@ -28,7 +28,19 @@ export class WhatsAppManager {
     return this.status;
   }
 
+  async disconnect(): Promise<void> {
+    if (this.sock) {
+      this.sock.ev.removeAllListeners();
+      this.sock.end(undefined);
+      this.sock = null;
+    }
+    this.status = "disconnected";
+    await this.updateSessionStatus("disconnected");
+  }
+
   async connect(): Promise<void> {
+    // Disconnect any existing session first
+    await this.disconnect();
     try {
       // Dynamic import for Baileys (ESM module)
       const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } =
@@ -36,8 +48,13 @@ export class WhatsAppManager {
 
       const { state, saveCreds } = await useMultiFileAuthState("./auth_state");
 
+      // Silence Baileys internal logs so QR code renders cleanly
+      const pino = (await import("pino")).default;
+      const silentLogger = pino({ level: "silent" });
+
       this.sock = makeWASocket({
         auth: state,
+        logger: silentLogger,
       });
 
       this.sock.ev.on("creds.update", saveCreds);

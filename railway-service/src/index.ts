@@ -55,6 +55,22 @@ app.post("/api/whatsapp/connect", authMiddleware, async (_req, res) => {
   }
 });
 
+app.post("/api/whatsapp/disconnect", authMiddleware, async (_req, res) => {
+  try {
+    await whatsapp.disconnect();
+    // Clear auth state so next connect generates a fresh QR
+    const fs = await import("fs");
+    const path = await import("path");
+    const authDir = path.resolve("./auth_state");
+    if (fs.existsSync(authDir)) {
+      fs.rmSync(authDir, { recursive: true, force: true });
+    }
+    res.json({ status: "disconnected", authCleared: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/api/whatsapp/send", authMiddleware, async (req, res) => {
   const { phone, message } = req.body;
   try {
