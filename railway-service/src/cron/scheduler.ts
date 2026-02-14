@@ -67,6 +67,7 @@ export function setupCronJobs(
               channel: "whatsapp",
               direction: "outbound",
               content: message,
+              sent_at: new Date().toISOString(),
             });
           } catch (error) {
             console.error(

@@ -48,6 +48,8 @@ export type Database = {
           duty_id: string
           id: string
           is_manual_override: boolean
+          message_acknowledged_override: boolean | null
+          message_sent_override: boolean | null
           status: Database["public"]["Enums"]["assignment_status"]
           updated_at: string
           volunteer_id: string
@@ -64,6 +66,8 @@ export type Database = {
           duty_id: string
           id?: string
           is_manual_override?: boolean
+          message_acknowledged_override?: boolean | null
+          message_sent_override?: boolean | null
           status?: Database["public"]["Enums"]["assignment_status"]
           updated_at?: string
           volunteer_id: string
@@ -80,6 +84,8 @@ export type Database = {
           duty_id?: string
           id?: string
           is_manual_override?: boolean
+          message_acknowledged_override?: boolean | null
+          message_sent_override?: boolean | null
           status?: Database["public"]["Enums"]["assignment_status"]
           updated_at?: string
           volunteer_id?: string

@@ -102,6 +102,28 @@ Use this template for each phase:
 
 ---
 
+## Phase: Drive Volunteers Table View
+
+### Date: 2026-02-14
+### Status: Completed
+
+### Objective
+Add a new drive view showing all volunteers in a table with columns: name, number, duty, status, message sent, message acknowledged, present. Inline duty editing and manual overrides for message sent/acknowledged.
+
+### Changes Made
+- **Migration** `supabase/migrations/20250214000000_add_message_tracking_overrides.sql`: Added `message_sent_override` and `message_acknowledged_override` (boolean, nullable) to `assignments` table.
+- **Railway cron** `railway-service/src/cron/scheduler.ts`: Set `sent_at` when inserting to `communication_log` on reminder send.
+- **New Volunteers view** `app/(dashboard)/drives/[id]/volunteers/page.tsx`: Table with Name, Number, Duty (inline Select), Status, Message Sent (auto from comm_log + override dropdown), Message Ack (auto from confirmed_at + override dropdown), Present (checked_in_at).
+- **Drive page** `app/(dashboard)/drives/[id]/page.tsx`: Added "Volunteers" tab and VolunteersPage component.
+- **Types** `lib/supabase/types.ts`: Added `message_sent_override`, `message_acknowledged_override` to assignments.
+
+### Auto-tracking Logic
+- **Message Sent**: Derived from `communication_log` where (volunteer_id, drive_id, direction='outbound', channel='whatsapp'). Railway reminder cron and WhatsApp send paths insert these rows; `sent_at` is now set.
+- **Message Acknowledged**: Derived from `assignments.confirmed_at` IS NOT NULL or status in (confirmed, en_route, arrived, completed). WhatsApp inbound handler and Retell webhook update assignment on confirm.
+- Both columns support manual override via dropdown (Auto / Mark as Yes / Mark as No).
+
+---
+
 ## Phase 1: Skeleton Loaders
 
 ### Agent: Implementation Agent
