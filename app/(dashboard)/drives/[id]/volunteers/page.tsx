@@ -139,7 +139,9 @@ export default function VolunteersPage() {
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [driveId]);
 
   async function loadData() {
