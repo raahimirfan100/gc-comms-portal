@@ -268,6 +268,99 @@ export function setupCronJobs(
     }
   }).start();
 
+  // Send scheduled WhatsApp messages - every minute
+  new CronJob("* * * * *", async () => {
+    try {
+      const now = new Date().toISOString();
+      const { data: pending } = await supabase
+        .from("scheduled_messages")
+        .select("*")
+        .eq("status", "pending")
+        .lte("scheduled_at", now)
+        .order("scheduled_at")
+        .limit(20);
+
+      if (!pending || pending.length === 0) return;
+
+      for (const msg of pending) {
+        try {
+          if (msg.group_jid) {
+            // Send to group
+            await whatsapp.sendGroupMessage(msg.group_jid, msg.message);
+          } else if (msg.volunteer_id) {
+            // Send to individual volunteer
+            const { data: volunteer } = await supabase
+              .from("volunteers")
+              .select("phone, name")
+              .eq("id", msg.volunteer_id)
+              .single();
+
+            if (!volunteer?.phone) {
+              await supabase
+                .from("scheduled_messages")
+                .update({ status: "failed", error: "Volunteer phone not found" })
+                .eq("id", msg.id);
+              continue;
+            }
+
+            // Replace template variables if a drive is linked
+            let text = msg.message;
+            if (msg.drive_id) {
+              const { data: drive } = await supabase
+                .from("drives")
+                .select("name, location_name, sunset_time")
+                .eq("id", msg.drive_id)
+                .single();
+
+              const { data: assignment } = await supabase
+                .from("assignments")
+                .select("duties(name)")
+                .eq("volunteer_id", msg.volunteer_id)
+                .eq("drive_id", msg.drive_id)
+                .limit(1)
+                .single();
+
+              text = text
+                .replace(/{name}/g, volunteer.name || "")
+                .replace(/{drive_name}/g, (drive as any)?.name || "")
+                .replace(/{location}/g, (drive as any)?.location_name || "")
+                .replace(/{sunset_time}/g, (drive as any)?.sunset_time || "")
+                .replace(/{duty}/g, (assignment?.duties as any)?.name || "");
+            } else {
+              text = text.replace(/{name}/g, volunteer.name || "");
+            }
+
+            await whatsapp.sendMessage(volunteer.phone, text);
+
+            // Log to communication_log
+            await supabase.from("communication_log").insert({
+              volunteer_id: msg.volunteer_id,
+              drive_id: msg.drive_id,
+              channel: "whatsapp",
+              direction: "outbound",
+              content: text,
+              sent_at: new Date().toISOString(),
+            });
+          }
+
+          // Mark as sent
+          await supabase
+            .from("scheduled_messages")
+            .update({ status: "sent", sent_at: new Date().toISOString() })
+            .eq("id", msg.id);
+        } catch (error: any) {
+          console.error(`[CRON] Failed to send scheduled message ${msg.id}:`, error);
+          await supabase
+            .from("scheduled_messages")
+            .update({ status: "failed", error: error.message || "Send failed" })
+            .eq("id", msg.id);
+        }
+      }
+    } catch (error) {
+      console.error("[CRON] Scheduled message send error:", error);
+    }
+  }).start();
+
   // WhatsApp health check - every 5 minutes
   new CronJob("*/5 * * * *", async () => {
     if (whatsapp.getStatus() === "disconnected") {
