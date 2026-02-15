@@ -3,6 +3,9 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=mihularskrnelbzktrfy"
+    },
+    "Sentry": {
+      "url": "https://mcp.sentry.dev/mcp/hammaad/gc-comms"
     }
   }
 }

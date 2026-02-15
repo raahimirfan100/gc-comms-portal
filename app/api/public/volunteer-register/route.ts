@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/utils";
 import { autoAssignVolunteer } from "@/lib/assignment/auto-assign";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -116,6 +117,7 @@ export async function POST(request: NextRequest) {
       assignments,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[volunteer-register]", err);
     return NextResponse.json(
       {

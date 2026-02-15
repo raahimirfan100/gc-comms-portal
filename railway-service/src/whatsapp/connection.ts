@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import qrcode from "qrcode-terminal";
+import { whatsappLogger } from "../lib/logger";
 
 // Fixed UUID for the singleton WhatsApp session row
 const SESSION_ID = "00000000-0000-0000-0000-000000000001";
@@ -54,7 +55,7 @@ export class WhatsAppManager {
         if (qr) {
           this.status = "qr_pending";
           // Print QR in terminal for scanning
-          console.log("\n📱 Scan this QR code with WhatsApp:\n");
+          whatsappLogger.info("QR code generated, scan with WhatsApp");
           qrcode.generate(qr, { small: true });
           // Store QR in database for admin panel display
           await this.supabase
@@ -72,7 +73,7 @@ export class WhatsAppManager {
           await this.updateSessionStatus("disconnected");
 
           if (shouldReconnect) {
-            console.log("Reconnecting WhatsApp...");
+            whatsappLogger.info("Reconnecting WhatsApp...");
             setTimeout(() => this.connect(), 5000);
           }
         } else if (connection === "open") {
@@ -89,7 +90,7 @@ export class WhatsAppManager {
               },
               { onConflict: "id" },
             );
-          console.log("✅ WhatsApp connected:", phoneNumber);
+          whatsappLogger.info({ phoneNumber }, "WhatsApp connected");
         }
       });
 
@@ -102,7 +103,7 @@ export class WhatsAppManager {
         }
       });
     } catch (error) {
-      console.error("WhatsApp connection error:", error);
+      whatsappLogger.error({ err: error }, "WhatsApp connection error");
       this.status = "disconnected";
       throw error;
     }
@@ -119,7 +120,7 @@ export class WhatsAppManager {
       try {
         await this.connect();
       } catch {
-        console.log("Auto-reconnect failed, will retry");
+        whatsappLogger.warn("Auto-reconnect failed, will retry");
       }
     }
   }
