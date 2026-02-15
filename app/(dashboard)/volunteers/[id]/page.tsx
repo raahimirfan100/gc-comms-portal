@@ -18,8 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatPhone, formatDate, getStatusColor } from "@/lib/utils";
+import { formatPhone, formatDate, getStatusBadgeVariant } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
 
 export default function VolunteerProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -56,14 +58,24 @@ export default function VolunteerProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-64 w-full rounded-lg" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+        <SkeletonTable rows={5} columns={4} />
       </div>
     );
   }
 
   if (!volunteer) {
-    return <div className="py-12 text-center">Volunteer not found</div>;
+    return (
+      <div className="py-12 text-center page-fade-in">Volunteer not found</div>
+    );
   }
 
   const dutyFrequency: Record<string, number> = {};
@@ -82,10 +94,10 @@ export default function VolunteerProfilePage() {
       : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div>
         <h1 className="text-2xl font-bold">{volunteer.name}</h1>
-        <div className="mt-1 flex items-center gap-3 text-muted-foreground">
+        <div className="mt-1 flex flex-wrap items-center gap-3 text-muted-foreground">
           <span className="font-mono">{formatPhone(volunteer.phone)}</span>
           <Badge variant="outline">{volunteer.gender}</Badge>
           {volunteer.organization && <span>{volunteer.organization}</span>}
@@ -95,9 +107,9 @@ export default function VolunteerProfilePage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Total Drives</p>
             <p className="text-2xl font-bold">
               {volunteer.total_drives_attended}
@@ -105,19 +117,19 @@ export default function VolunteerProfilePage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Assignments</p>
             <p className="text-2xl font-bold">{totalAssignments}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Attendance Rate</p>
             <p className="text-2xl font-bold">{attendanceRate}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 pb-6">
             <p className="text-sm text-muted-foreground">Top Duty</p>
             <p className="text-2xl font-bold">
               {Object.entries(dutyFrequency).sort(
@@ -144,24 +156,28 @@ export default function VolunteerProfilePage() {
             </TableHeader>
             <TableBody>
               {assignments.map((a) => (
-                <TableRow key={a.id}>
+                <TableRow key={a.id} className="stagger-item">
                   <TableCell>{a.drives?.name}</TableCell>
                   <TableCell>{formatDate(a.drives?.drive_date)}</TableCell>
                   <TableCell>{a.duties?.name}</TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(a.status)}>
+                    <Badge variant={getStatusBadgeVariant(a.status).variant}>
                       {a.status.replace("_", " ")}
                     </Badge>
                   </TableCell>
                 </TableRow>
               ))}
               {assignments.length === 0 && (
-                <TableRow>
+                <TableRow className="empty-state">
                   <TableCell
                     colSpan={4}
-                    className="text-center text-muted-foreground py-4"
+                    className="text-center text-muted-foreground py-12"
                   >
-                    No assignments yet
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="empty-state-icon text-4xl">📝</div>
+                      <p className="text-base font-medium">No assignments yet</p>
+                      <p className="text-sm">This volunteer hasn't been assigned to any drives</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
@@ -187,7 +203,7 @@ export default function VolunteerProfilePage() {
               </TableHeader>
               <TableBody>
                 {commLogs.map((log) => (
-                  <TableRow key={log.id}>
+                  <TableRow key={log.id} className="stagger-item">
                     <TableCell>
                       <Badge variant="outline">{log.channel}</Badge>
                     </TableCell>

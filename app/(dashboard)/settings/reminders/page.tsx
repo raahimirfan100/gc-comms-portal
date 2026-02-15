@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Reminder = {
   type: string;
@@ -78,23 +79,34 @@ export default function ReminderSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-8 page-fade-in max-w-4xl">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Default Reminders</h1>
+    <div className="space-y-8 page-fade-in max-w-4xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">Default Reminders</h1>
           <p className="text-muted-foreground">
             Default templates applied to new drives. Variables: {"{name}"},{" "}
             {"{duty}"}, {"{drive_name}"}, {"{sunset_time}"}, {"{location}"}
           </p>
         </div>
-        <Button onClick={addReminder}>
+        <Button className="self-start sm:self-auto" onClick={addReminder}>
           <Plus className="mr-2 h-4 w-4" />
           Add Template
         </Button>
@@ -102,17 +114,17 @@ export default function ReminderSettingsPage() {
 
       <div className="space-y-4">
         {reminders.map((r, i) => (
-          <Card key={i}>
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center gap-4">
-                <div className="space-y-1 flex-1">
+          <Card key={i} className="stagger-item">
+            <CardContent className="space-y-3 pt-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex-1 space-y-1">
                   <Label>Type</Label>
                   <Input
                     value={r.type}
                     onChange={(e) => updateReminder(i, "type", e.target.value)}
                   />
                 </div>
-                <div className="space-y-1 w-40">
+                <div className="space-y-1 sm:w-40">
                   <Label>Hours before sunset</Label>
                   <Input
                     type="number"
@@ -130,7 +142,7 @@ export default function ReminderSettingsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="mt-5"
+                  className="mt-2 sm:mt-5"
                   onClick={() => removeReminder(i)}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -151,10 +163,12 @@ export default function ReminderSettingsPage() {
         ))}
       </div>
 
-      <Button onClick={save} disabled={saving}>
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Save Defaults
-      </Button>
+      <div className="border-t border-border pt-6">
+        <Button onClick={save} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Defaults
+        </Button>
+      </div>
     </div>
   );
 }

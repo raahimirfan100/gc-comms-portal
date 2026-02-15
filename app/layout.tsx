@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Grand Citizens - Iftaar Drive Management",
   description: "Volunteer management system for Grand Citizens Iftaar Drives",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 const geistSans = Geist({

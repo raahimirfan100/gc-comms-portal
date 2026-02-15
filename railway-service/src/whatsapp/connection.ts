@@ -1,23 +1,13 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import qrcode from "qrcode-terminal";
 
-// Rate-limited message queue
-interface QueuedMessage {
-  phone: string;
-  message: string;
-  resolve: (value: void) => void;
-  reject: (reason: any) => void;
-}
+// Fixed UUID for the singleton WhatsApp session row
+const SESSION_ID = "00000000-0000-0000-0000-000000000001";
 
 export class WhatsAppManager {
   private supabase: SupabaseClient;
   private sock: any = null;
   private status: string = "disconnected";
-  private messageQueue: QueuedMessage[] = [];
-  private processing = false;
-  private rateLimit = 1000; // 1 msg/sec
-  private burstLimit = 5;
-  private burstCount = 0;
-  private burstReset: NodeJS.Timeout | null = null;
 
   constructor(supabase: SupabaseClient) {
     this.supabase = supabase;
@@ -27,7 +17,19 @@ export class WhatsAppManager {
     return this.status;
   }
 
+  async disconnect(): Promise<void> {
+    if (this.sock) {
+      this.sock.ev.removeAllListeners();
+      this.sock.end(undefined);
+      this.sock = null;
+    }
+    this.status = "disconnected";
+    await this.updateSessionStatus("disconnected");
+  }
+
   async connect(): Promise<void> {
+    // Disconnect any existing session first
+    await this.disconnect();
     try {
       // Dynamic import for Baileys (ESM module)
       const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } =
@@ -35,9 +37,13 @@ export class WhatsAppManager {
 
       const { state, saveCreds } = await useMultiFileAuthState("./auth_state");
 
+      // Silence Baileys internal logs so QR code renders cleanly
+      const pino = (await import("pino")).default;
+      const silentLogger = pino({ level: "silent" });
+
       this.sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true,
+        logger: silentLogger,
       });
 
       this.sock.ev.on("creds.update", saveCreds);
@@ -47,11 +53,14 @@ export class WhatsAppManager {
 
         if (qr) {
           this.status = "qr_pending";
+          // Print QR in terminal for scanning
+          console.log("\n📱 Scan this QR code with WhatsApp:\n");
+          qrcode.generate(qr, { small: true });
           // Store QR in database for admin panel display
           await this.supabase
             .from("whatsapp_sessions")
             .upsert(
-              { id: "default", status: "qr_pending", qr_code: qr },
+              { id: SESSION_ID, status: "qr_pending", qr_code: qr },
               { onConflict: "id" },
             );
         }
@@ -73,14 +82,14 @@ export class WhatsAppManager {
             .from("whatsapp_sessions")
             .upsert(
               {
-                id: "default",
+                id: SESSION_ID,
                 status: "connected",
                 phone_number: phoneNumber,
                 qr_code: null,
               },
               { onConflict: "id" },
             );
-          console.log("WhatsApp connected:", phoneNumber);
+          console.log("✅ WhatsApp connected:", phoneNumber);
         }
       });
 
@@ -103,7 +112,7 @@ export class WhatsAppManager {
     const { data: session } = await this.supabase
       .from("whatsapp_sessions")
       .select("status")
-      .eq("id", "default")
+      .eq("id", SESSION_ID)
       .single();
 
     if (session?.status === "connected" || session?.status === "qr_pending") {
@@ -116,43 +125,47 @@ export class WhatsAppManager {
   }
 
   async sendMessage(phone: string, message: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.messageQueue.push({ phone, message, resolve, reject });
-      this.processQueue();
-    });
-  }
-
-  private async processQueue(): Promise<void> {
-    if (this.processing || this.messageQueue.length === 0) return;
-    this.processing = true;
-
-    while (this.messageQueue.length > 0) {
-      if (this.burstCount >= this.burstLimit) {
-        await this.delay(this.rateLimit);
-        this.burstCount = 0;
-      }
-
-      const item = this.messageQueue.shift()!;
-      try {
-        if (!this.sock) throw new Error("WhatsApp not connected");
-        const jid = item.phone.replace("+", "") + "@s.whatsapp.net";
-        await this.sock.sendMessage(jid, { text: item.message });
-        this.burstCount++;
-        item.resolve();
-      } catch (error) {
-        item.reject(error);
-      }
-
-      await this.delay(this.rateLimit);
-    }
-
-    this.processing = false;
-  }
-
-  async addToGroup(phone: string, groupJid: string): Promise<void> {
     if (!this.sock) throw new Error("WhatsApp not connected");
     const jid = phone.replace("+", "") + "@s.whatsapp.net";
-    await this.sock.groupParticipantsUpdate(groupJid, [jid], "add");
+
+    // Send directly with a 15-second timeout
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Send timed out after 15s")), 15000),
+    );
+    await Promise.race([
+      this.sock.sendMessage(jid, { text: message }),
+      timeout,
+    ]);
+  }
+
+  async addToGroup(phone: string, groupJid: string): Promise<{ added: boolean }> {
+    if (!this.sock) throw new Error("WhatsApp not connected");
+    const jid = phone.replace("+", "") + "@s.whatsapp.net";
+    try {
+      await this.sock.groupParticipantsUpdate(groupJid, [jid], "add");
+      return { added: true };
+    } catch {
+      return { added: false };
+    }
+  }
+
+  async sendGroupMessage(groupJid: string, message: string): Promise<void> {
+    if (!this.sock) throw new Error("WhatsApp not connected");
+    await this.sock.sendMessage(groupJid, { text: message });
+  }
+
+  async getGroupInviteCode(groupJid: string): Promise<string | undefined> {
+    if (!this.sock) throw new Error("WhatsApp not connected");
+    return this.sock.groupInviteCode(groupJid);
+  }
+
+  async listGroups(): Promise<{ id: string; subject: string }[]> {
+    if (!this.sock) throw new Error("WhatsApp not connected");
+    const groups = await this.sock.groupFetchAllParticipating();
+    return Object.values(groups).map((g: any) => ({
+      id: g.id,
+      subject: g.subject,
+    }));
   }
 
   private async handleIncomingMessage(msg: any): Promise<void> {
@@ -245,7 +258,7 @@ export class WhatsAppManager {
     await this.supabase
       .from("whatsapp_sessions")
       .upsert(
-        { id: "default", status, qr_code: null },
+        { id: SESSION_ID, status, qr_code: null },
         { onConflict: "id" },
       );
   }

@@ -13,11 +13,15 @@ export default function DashboardLayout({
       <Suspense>
         <Sidebar />
       </Suspense>
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Suspense>
           <Topbar />
         </Suspense>
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-auto p-4 sm:p-6">
+          <div className="min-w-0">
+            {children}
+          </div>
+        </main>
       </div>
       <Toaster />
     </div>

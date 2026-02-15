@@ -144,7 +144,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Database Schema
 
-The schema is managed via Supabase migrations. Core tables:
+The schema is defined in `supabase/full_schema.sql` (apply it in the Supabase SQL Editor). Core tables:
 
 | Table | Purpose |
 |---|---|

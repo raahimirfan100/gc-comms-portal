@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,11 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import type { Tables } from "@/lib/supabase/types";
+import { SkeletonForm } from "@/components/ui/skeleton-form";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DutyCapacityRulesPage() {
   const { id: dutyId } = useParams<{ id: string }>();
-  const router = useRouter();
   const supabase = createClient();
   const [duty, setDuty] = useState<Tables<"duties"> | null>(null);
   const [rules, setRules] = useState<Tables<"duty_capacity_rules">[]>([]);
@@ -114,8 +115,12 @@ export default function DutyCapacityRulesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="mx-auto max-w-2xl space-y-6 page-fade-in">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <SkeletonForm fields={6} />
       </div>
     );
   }
@@ -124,7 +129,7 @@ export default function DutyCapacityRulesPage() {
   const tieredRules = rules.filter((r) => r.capacity_mode === "tiered");
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6 page-fade-in">
       <div>
         <h1 className="text-2xl font-bold">
           Capacity Rules: {duty?.name}
@@ -189,7 +194,7 @@ export default function DutyCapacityRulesPage() {
         </Card>
       )}
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -272,14 +277,17 @@ export default function DutyCapacityRulesPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Preview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-5 gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3 md:grid-cols-5">
             {[5, 10, 15, 20, 30].map((daigs) => (
-              <div key={daigs} className="rounded border p-3 text-center">
+              <div
+                key={daigs}
+                className="stagger-item rounded border p-3 text-center"
+              >
                 <div className="text-muted-foreground">{daigs} daigs</div>
                 <div className="text-lg font-bold">
                   {calculatePreview(daigs)}
@@ -289,10 +297,6 @@ export default function DutyCapacityRulesPage() {
           </div>
         </CardContent>
       </Card>
-
-      <Button variant="outline" onClick={() => router.back()}>
-        Back to Duties
-      </Button>
     </div>
   );
 }

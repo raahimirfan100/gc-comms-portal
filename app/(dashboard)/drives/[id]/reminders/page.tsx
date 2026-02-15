@@ -5,27 +5,13 @@ import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Plus, Send, Trash2 } from "lucide-react";
+import { Bell, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import type { Tables } from "@/lib/supabase/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RemindersPage() {
   const { id: driveId } = useParams<{ id: string }>();
@@ -37,7 +23,7 @@ export default function RemindersPage() {
 
   useEffect(() => {
     loadReminders();
-  }, []);
+  }, [driveId]);
 
   async function loadReminders() {
     const { data } = await supabase
@@ -82,85 +68,134 @@ export default function RemindersPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-8 w-36" />
+            </div>
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-10 w-full max-w-2xl rounded-lg" />
+        <div className="space-y-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-52 w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
 
+  const variableHint = "{name}, {duty}, {drive_name}, {location}, {sunset_time}";
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Reminders</h1>
-          <p className="text-muted-foreground">
-            Configure WhatsApp reminders for this drive. Variables: {"{name}"},{" "}
-            {"{duty}"}, {"{drive_name}"}, {"{sunset_time}"}, {"{location}"}
+    <div className="space-y-6 page-fade-in">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 shrink-0 text-primary" />
+            <h1 className="text-2xl font-bold">Reminders</h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Schedule WhatsApp reminders relative to sunset for this drive
           </p>
         </div>
-        <Button onClick={addReminder}>
+        <Button className="self-start sm:self-auto" onClick={addReminder}>
           <Plus className="mr-2 h-4 w-4" />
           Add Reminder
         </Button>
       </div>
 
-      <div className="space-y-4">
-        {reminders.map((r) => (
-          <Card key={r.id}>
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline">{r.reminder_type}</Badge>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm">Hours before sunset:</Label>
-                    <Input
-                      type="number"
-                      step="0.5"
-                      className="w-20"
-                      defaultValue={r.hours_before_sunset || 0}
-                      onBlur={(e) =>
-                        updateReminder(
-                          r.id,
-                          "hours_before_sunset",
-                          parseFloat(e.target.value),
-                        )
-                      }
-                    />
-                  </div>
-                  {r.is_sent && (
-                    <Badge className="bg-green-100 text-green-800">Sent</Badge>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteReminder(r.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-              <Textarea
-                defaultValue={r.message_template || ""}
-                rows={3}
-                onBlur={(e) =>
-                  updateReminder(r.id, "message_template", e.target.value)
-                }
-              />
-              {r.scheduled_at && (
-                <p className="text-xs text-muted-foreground">
-                  Scheduled: {new Date(r.scheduled_at).toLocaleString("en-PK")}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+      <div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Template variables:</span>{" "}
+          <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
+            {variableHint}
+          </code>
+        </p>
+      </div>
 
-        {reminders.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              No reminders configured. Click "Add Reminder" to create one.
+      <div className="space-y-4">
+        {reminders.length === 0 ? (
+          <Card className="stagger-item">
+            <CardContent className="empty-state py-12 text-center text-muted-foreground">
+              <div className="flex flex-col items-center gap-2">
+                <div className="empty-state-icon text-4xl">🔔</div>
+                <p className="text-base font-medium">No reminders configured</p>
+                <p className="text-sm">
+                  Click &quot;Add Reminder&quot; to schedule a WhatsApp reminder
+                  for this drive
+                </p>
+              </div>
             </CardContent>
           </Card>
+        ) : (
+          reminders.map((r) => (
+            <Card key={r.id} className="stagger-item">
+              <CardContent className="p-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min={0}
+                    className="h-8 w-14 shrink-0 text-center text-sm"
+                    defaultValue={r.hours_before_sunset ?? 0}
+                    onBlur={(e) =>
+                      updateReminder(
+                        r.id,
+                        "hours_before_sunset",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground shrink-0">
+                    hrs before sunset
+                  </span>
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {r.reminder_type}
+                  </Badge>
+                  {r.is_sent && (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 text-xs bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/30"
+                    >
+                      <CheckCircle2 className="h-3 w-3" />
+                      Sent
+                    </Badge>
+                  )}
+                  {r.scheduled_at && (
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(r.scheduled_at).toLocaleString("en-PK", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 ml-auto shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => deleteReminder(r.id)}
+                    aria-label="Delete reminder"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <Textarea
+                  defaultValue={r.message_template || ""}
+                  rows={2}
+                  className="resize-none font-mono text-sm border-border/80"
+                  placeholder="Message: e.g. Reminder: {name}, you are assigned to {duty} for {drive_name}..."
+                  onBlur={(e) =>
+                    updateReminder(r.id, "message_template", e.target.value)
+                  }
+                />
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
     </div>

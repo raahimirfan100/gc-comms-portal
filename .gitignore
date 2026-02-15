@@ -35,6 +35,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# MCP config may contain project identifiers; keep local only for public repos
+.mcp.json
+
 # vercel
 .vercel
 
@@ -44,6 +47,10 @@ next-env.d.ts
 
 # playwright cli
 .playwright-cli/
+# playwright test
+test-results/
+playwright-report/
+playwright/.cache/
 
 # railway-service
 railway-service/dist/

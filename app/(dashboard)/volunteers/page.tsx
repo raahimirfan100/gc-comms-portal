@@ -22,7 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatPhone } from "@/lib/utils";
-import { Search, Plus, Upload, Loader2 } from "lucide-react";
+import { Search, Plus, Upload } from "lucide-react";
+import { SkeletonTableRow } from "@/components/ui/skeleton-table";
 import type { Tables } from "@/lib/supabase/types";
 
 export default function VolunteersPage() {
@@ -61,13 +62,13 @@ export default function VolunteersPage() {
   }, [loadVolunteers]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="space-y-6 page-fade-in">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">Volunteers</h1>
           <p className="text-muted-foreground">{total} total volunteers</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Link href="/volunteers/import">
             <Button variant="outline">
               <Upload className="mr-2 h-4 w-4" />
@@ -83,7 +84,7 @@ export default function VolunteersPage() {
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -103,7 +104,7 @@ export default function VolunteersPage() {
             setPage(0);
           }}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="Gender" />
           </SelectTrigger>
           <SelectContent>
@@ -129,23 +130,27 @@ export default function VolunteersPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                </TableCell>
-              </TableRow>
+              <>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <SkeletonTableRow key={i} columns={7} />
+                ))}
+              </>
             ) : volunteers.length === 0 ? (
-              <TableRow>
+              <TableRow className="empty-state">
                 <TableCell
                   colSpan={7}
-                  className="text-center py-8 text-muted-foreground"
+                  className="text-center py-12 text-muted-foreground"
                 >
-                  No volunteers found
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="empty-state-icon text-4xl">📋</div>
+                    <p className="text-base font-medium">No volunteers found</p>
+                    <p className="text-sm">Try adjusting your search or filters</p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
               volunteers.map((v) => (
-                <TableRow key={v.id}>
+                <TableRow key={v.id} className="stagger-item">
                   <TableCell>
                     <Link
                       href={`/volunteers/${v.id}`}
@@ -169,9 +174,7 @@ export default function VolunteersPage() {
                   </TableCell>
                   <TableCell>
                     {v.is_active ? (
-                      <Badge className="bg-green-100 text-green-800">
-                        Active
-                      </Badge>
+                      <Badge variant="success">Active</Badge>
                     ) : (
                       <Badge variant="secondary">Inactive</Badge>
                     )}
@@ -184,12 +187,12 @@ export default function VolunteersPage() {
       </div>
 
       {total > pageSize && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
             Showing {page * pageSize + 1}-
             {Math.min((page + 1) * pageSize, total)} of {total}
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:justify-end">
             <Button
               variant="outline"
               size="sm"

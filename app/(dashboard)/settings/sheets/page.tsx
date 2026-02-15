@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { SkeletonForm } from "@/components/ui/skeleton-form";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Tables } from "@/lib/supabase/types";
 
 export default function SheetsSettingsPage() {
@@ -65,30 +67,34 @@ export default function SheetsSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-8 page-fade-in max-w-4xl">
+        <div className="space-y-1">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <SkeletonForm fields={4} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Google Sheets Sync</h1>
+    <div className="space-y-8 page-fade-in max-w-4xl">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Google Sheets Sync</h1>
         <p className="text-muted-foreground">
           Configure Google Form response sheets for volunteer signup sync
         </p>
       </div>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Add Sheet</CardTitle>
           <CardDescription>
             Enter the Google Sheet ID (from the URL) and optionally the tab name
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <CardContent className="space-y-4 pt-5 pb-5 sm:pt-6 sm:pb-6">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Sheet ID</Label>
               <Input
@@ -115,8 +121,8 @@ export default function SheetsSettingsPage() {
 
       <div className="space-y-3">
         {syncs.map((sync) => (
-          <Card key={sync.id}>
-            <CardContent className="flex items-center justify-between pt-6">
+          <Card key={sync.id} className="stagger-item">
+            <CardContent className="flex items-center justify-between pt-5 pb-5 sm:pt-6 sm:pb-6">
               <div>
                 <p className="font-medium font-mono text-sm">
                   {sync.sheet_id}
@@ -162,9 +168,11 @@ export default function SheetsSettingsPage() {
           </Card>
         ))}
         {syncs.length === 0 && (
-          <p className="text-center text-muted-foreground py-4">
-            No sheets configured
-          </p>
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 py-10 text-center">
+            <p className="text-muted-foreground text-sm">
+              No sheets configured. Add a sheet above to sync volunteer signups from Google Forms.
+            </p>
+          </div>
         )}
       </div>
     </div>

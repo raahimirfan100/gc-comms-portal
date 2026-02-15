@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Phone } from "lucide-react";
+import { SkeletonForm } from "@/components/ui/skeleton-form";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CallingSettingsPage() {
   const supabase = createClient();
@@ -48,22 +50,26 @@ export default function CallingSettingsPage() {
 
   if (loading || !config) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-8 page-fade-in max-w-4xl">
+        <div className="space-y-1">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <SkeletonForm fields={6} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">AI Calling Settings</h1>
+    <div className="space-y-8 page-fade-in max-w-4xl">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">AI Calling Settings</h1>
         <p className="text-muted-foreground">
           Configure Retell AI for automated Urdu phone calls
         </p>
       </div>
 
-      <Card>
+      <Card className="stagger-item">
         <CardContent className="flex items-center justify-between pt-6">
           <div>
             <Label className="text-base">Enable AI Calling</Label>
@@ -78,7 +84,7 @@ export default function CallingSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Retell AI Configuration</CardTitle>
           <CardDescription>
@@ -121,7 +127,7 @@ export default function CallingSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="stagger-item">
         <CardHeader>
           <CardTitle>Timing</CardTitle>
         </CardHeader>
@@ -156,10 +162,12 @@ export default function CallingSettingsPage() {
         </CardContent>
       </Card>
 
-      <Button onClick={save} disabled={saving}>
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Save Settings
-      </Button>
+      <div className="border-t border-border pt-6">
+        <Button onClick={save} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Settings
+        </Button>
+      </div>
     </div>
   );
 }

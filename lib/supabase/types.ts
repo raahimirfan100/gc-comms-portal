@@ -48,6 +48,8 @@ export type Database = {
           duty_id: string
           id: string
           is_manual_override: boolean
+          message_acknowledged_override: boolean | null
+          message_sent_override: boolean | null
           status: Database["public"]["Enums"]["assignment_status"]
           updated_at: string
           volunteer_id: string
@@ -64,6 +66,8 @@ export type Database = {
           duty_id: string
           id?: string
           is_manual_override?: boolean
+          message_acknowledged_override?: boolean | null
+          message_sent_override?: boolean | null
           status?: Database["public"]["Enums"]["assignment_status"]
           updated_at?: string
           volunteer_id: string
@@ -80,6 +84,8 @@ export type Database = {
           duty_id?: string
           id?: string
           is_manual_override?: boolean
+          message_acknowledged_override?: boolean | null
+          message_sent_override?: boolean | null
           status?: Database["public"]["Enums"]["assignment_status"]
           updated_at?: string
           volunteer_id?: string
@@ -244,12 +250,15 @@ export type Database = {
           iftaar_time: string | null
           location_address: string | null
           location_name: string | null
+          location_lat: number | null
+          location_lng: number | null
           name: string
           notes: string | null
           season_id: string
           status: Database["public"]["Enums"]["drive_status"]
           sunset_source: string | null
           sunset_time: string | null
+          volunteer_target: number | null
           updated_at: string
         }
         Insert: {
@@ -260,12 +269,15 @@ export type Database = {
           iftaar_time?: string | null
           location_address?: string | null
           location_name?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
           name: string
           notes?: string | null
           season_id: string
           status?: Database["public"]["Enums"]["drive_status"]
           sunset_source?: string | null
           sunset_time?: string | null
+          volunteer_target?: number | null
           updated_at?: string
         }
         Update: {
@@ -276,12 +288,15 @@ export type Database = {
           iftaar_time?: string | null
           location_address?: string | null
           location_name?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
           name?: string
           notes?: string | null
           season_id?: string
           status?: Database["public"]["Enums"]["drive_status"]
           sunset_source?: string | null
           sunset_time?: string | null
+          volunteer_target?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -297,6 +312,7 @@ export type Database = {
       duties: {
         Row: {
           created_at: string
+          description: string | null
           display_order: number
           gender_restriction: Database["public"]["Enums"]["gender"] | null
           id: string
@@ -307,6 +323,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           display_order?: number
           gender_restriction?: Database["public"]["Enums"]["gender"] | null
           id?: string
@@ -317,6 +334,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           display_order?: number
           gender_restriction?: Database["public"]["Enums"]["gender"] | null
           id?: string

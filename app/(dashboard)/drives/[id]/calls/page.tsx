@@ -22,7 +22,9 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Loader2, Phone, PhoneCall } from "lucide-react";
-import { formatPhone, getStatusColor } from "@/lib/utils";
+import { formatPhone, getStatusBadgeVariant } from "@/lib/utils";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type CallEntry = {
   id: string;
@@ -157,22 +159,32 @@ export default function CallCenterPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-6 page-fade-in">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+        <SkeletonTable rows={8} columns={5} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="space-y-6 page-fade-in">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">Call Center</h1>
           <p className="text-muted-foreground">
             AI phone calls to confirm volunteer attendance
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Button variant="outline" onClick={selectAllUnconfirmed}>
             Select Unconfirmed
           </Button>
@@ -202,42 +214,59 @@ export default function CallCenterPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selected.has(e.volunteer_id)}
-                      onCheckedChange={() => toggleSelect(e.volunteer_id)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {e.volunteer_name}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {formatPhone(e.volunteer_phone)}
-                  </TableCell>
-                  <TableCell>{e.duty_name}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(e.assignment_status)}>
-                      {e.assignment_status.replace("_", " ")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {e.last_call_result ? (
-                      <Badge variant="outline">
-                        {e.last_call_result.replace("_", " ")}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {e.last_call_duration
-                      ? `${e.last_call_duration}s`
-                      : "—"}
+              {entries.length === 0 ? (
+                <TableRow className="empty-state">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center text-muted-foreground py-12"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="empty-state-icon text-4xl">📞</div>
+                      <p className="text-base font-medium">No volunteers to call</p>
+                      <p className="text-sm">All volunteers are confirmed or there are no assignments</p>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                entries.map((e) => (
+                  <TableRow key={e.id} className="stagger-item">
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.has(e.volunteer_id)}
+                        onCheckedChange={() => toggleSelect(e.volunteer_id)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {e.volunteer_name}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {formatPhone(e.volunteer_phone)}
+                    </TableCell>
+                    <TableCell>{e.duty_name}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={getStatusBadgeVariant(e.assignment_status).variant}
+                      >
+                        {e.assignment_status.replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {e.last_call_result ? (
+                        <Badge variant="outline">
+                          {e.last_call_result.replace("_", " ")}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {e.last_call_duration
+                        ? `${e.last_call_duration}s`
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

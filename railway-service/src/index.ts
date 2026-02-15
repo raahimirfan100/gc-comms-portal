@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { WhatsAppManager } from "./whatsapp/connection";
@@ -54,6 +55,22 @@ app.post("/api/whatsapp/connect", authMiddleware, async (_req, res) => {
   }
 });
 
+app.post("/api/whatsapp/disconnect", authMiddleware, async (_req, res) => {
+  try {
+    await whatsapp.disconnect();
+    // Clear auth state so next connect generates a fresh QR
+    const fs = await import("fs");
+    const path = await import("path");
+    const authDir = path.resolve("./auth_state");
+    if (fs.existsSync(authDir)) {
+      fs.rmSync(authDir, { recursive: true, force: true });
+    }
+    res.json({ status: "disconnected", authCleared: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/api/whatsapp/send", authMiddleware, async (req, res) => {
   const { phone, message } = req.body;
   try {
@@ -64,10 +81,48 @@ app.post("/api/whatsapp/send", authMiddleware, async (req, res) => {
   }
 });
 
-app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
-  const { phone, groupJid } = req.body;
+app.get("/api/whatsapp/groups", authMiddleware, async (_req, res) => {
   try {
-    await whatsapp.addToGroup(phone, groupJid);
+    const groups = await whatsapp.listGroups();
+    res.json(groups);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
+  const { phone, groupJid, name, assignments } = req.body;
+  try {
+    const { added } = await whatsapp.addToGroup(phone, groupJid);
+
+    if (!added) {
+      // Fallback: send invite link via DM
+      const code = await whatsapp.getGroupInviteCode(groupJid);
+      if (code) {
+        const link = `https://chat.whatsapp.com/${code}`;
+        await whatsapp.sendMessage(
+          phone,
+          `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n${link}`,
+        );
+        res.json({ status: "invite_sent", link });
+      } else {
+        res.json({ status: "failed", error: "Could not add or generate invite" });
+      }
+      return;
+    }
+
+    // Send announcement in the group
+    if (name && groupJid) {
+      const dutyLines = Array.isArray(assignments) && assignments.length > 0
+        ? assignments.map((a: { drive: string; duty: string }) => `• ${a.drive}: ${a.duty}`).join("\n")
+        : "Duties pending assignment";
+
+      await whatsapp.sendGroupMessage(
+        groupJid,
+        `🌙 *New Volunteer Joined!*\n\n*${name}* has signed up for the Iftaar Drive.\n\n*Assignments:*\n${dutyLines}\n\nWelcome aboard! 🤝`,
+      );
+    }
+
     res.json({ status: "added" });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

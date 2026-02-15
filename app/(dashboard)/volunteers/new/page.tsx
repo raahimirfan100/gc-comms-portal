@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormField } from "@/components/ui/form-field";
+import { FormActions } from "@/components/ui/form-actions";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -59,32 +61,28 @@ export default function NewVolunteerPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg">
+    <div className="mx-auto max-w-lg page-fade-in">
       <Card>
         <CardHeader>
           <CardTitle>Add Volunteer</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+            <FormField label="Full Name" htmlFor="name" required>
               <Input id="name" name="name" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+            </FormField>
+            <FormField label="Phone" htmlFor="phone" required>
               <Input
                 id="phone"
                 name="phone"
                 placeholder="03XX-XXXXXXX"
                 required
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            </FormField>
+            <FormField label="Email" htmlFor="email">
               <Input id="email" name="email" type="email" />
-            </div>
-            <div className="space-y-2">
-              <Label>Gender</Label>
+            </FormField>
+            <FormField label="Gender" required>
               <Select name="gender" required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select gender" />
@@ -94,20 +92,22 @@ export default function NewVolunteerPage() {
                   <SelectItem value="female">Female</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="organization">Organization</Label>
+            </FormField>
+            <FormField
+              label="Organization"
+              htmlFor="organization"
+              description="School, college, company, or other organization (optional)"
+            >
               <Input
                 id="organization"
                 name="organization"
                 placeholder="School/College/Company"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+            </FormField>
+            <FormField label="Notes" htmlFor="notes">
               <Textarea id="notes" name="notes" rows={2} />
-            </div>
-            <div className="flex gap-3 pt-2">
+            </FormField>
+            <FormActions>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Add Volunteer
@@ -119,7 +119,7 @@ export default function NewVolunteerPage() {
               >
                 Cancel
               </Button>
-            </div>
+            </FormActions>
           </form>
         </CardContent>
       </Card>
