@@ -58,3 +58,6 @@ railway-service/node_modules/
 
 # editor / AI
 CLAUDE.md
+
+# Sentry Config File
+.env.sentry-build-plugin

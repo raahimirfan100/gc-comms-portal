@@ -4,12 +4,10 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {};
 
 export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+  org: "hammaad",
+  project: "gc-comms",
 
   silent: !process.env.CI,
-
-  authToken: process.env.SENTRY_AUTH_TOKEN,
 
   widenClientFileUpload: true,
 
@@ -22,5 +20,12 @@ export default withSentryConfig(nextConfig, {
     excludeDebugStatements: true,
     excludeReplayIframe: true,
     excludeReplayShadowDom: true,
+  },
+
+  webpack: {
+    automaticVercelMonitors: true,
+    treeshake: {
+      removeDebugLogging: true,
+    },
   },
 });
