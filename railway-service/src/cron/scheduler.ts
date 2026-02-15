@@ -1,8 +1,10 @@
 import { CronJob } from "cron";
+import * as Sentry from "@sentry/node";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { WhatsAppManager } from "../whatsapp/connection";
 import { GoogleSheetsSync } from "../sheets/sync";
 import { RetellClient } from "../calling/retell-client";
+import { cronLogger } from "../lib/logger";
 
 export function setupCronJobs(
   supabase: SupabaseClient,
@@ -11,21 +13,23 @@ export function setupCronJobs(
   retell: RetellClient,
 ): void {
   // Google Sheets sync - every 5 minutes
-  new CronJob("*/5 * * * *", async () => {
-    console.log("[CRON] Google Sheets sync");
-    try {
+  new CronJob("*/5 * * * *", () => {
+    Sentry.withMonitor("sheets-sync", async () => {
+      cronLogger.info("Google Sheets sync started");
       const result = await sheetsSync.syncAll();
       if (result.synced > 0) {
-        console.log(`[CRON] Synced ${result.synced} new volunteers`);
+        cronLogger.info({ synced: result.synced }, "Synced new volunteers");
       }
-    } catch (error) {
-      console.error("[CRON] Sheets sync error:", error);
-    }
+    }, {
+      schedule: { type: "crontab", value: "*/5 * * * *" },
+    }).catch((error) => {
+      cronLogger.error({ err: error }, "Sheets sync error");
+    });
   }).start();
 
   // Send reminders - every minute
-  new CronJob("* * * * *", async () => {
-    try {
+  new CronJob("* * * * *", () => {
+    Sentry.withMonitor("send-reminders", async () => {
       const now = new Date().toISOString();
       const { data: pendingReminders } = await supabase
         .from("reminder_schedules")
@@ -70,9 +74,9 @@ export function setupCronJobs(
               sent_at: new Date().toISOString(),
             });
           } catch (error) {
-            console.error(
-              `[CRON] Failed to send reminder to ${volunteer.phone}:`,
-              error,
+            cronLogger.error(
+              { err: error, phone: volunteer.phone },
+              "Failed to send reminder",
             );
           }
         }
@@ -83,14 +87,16 @@ export function setupCronJobs(
           .update({ is_sent: true, sent_at: new Date().toISOString() })
           .eq("id", reminder.id);
       }
-    } catch (error) {
-      console.error("[CRON] Reminder send error:", error);
-    }
+    }, {
+      schedule: { type: "crontab", value: "* * * * *" },
+    }).catch((error) => {
+      cronLogger.error({ err: error }, "Reminder send error");
+    });
   }).start();
 
   // Trigger AI calls - every minute
-  new CronJob("* * * * *", async () => {
-    try {
+  new CronJob("* * * * *", () => {
+    Sentry.withMonitor("ai-call-trigger", async () => {
       const { data: config } = await supabase
         .from("app_config")
         .select("value")
@@ -134,8 +140,9 @@ export function setupCronJobs(
             .eq("status", "assigned");
 
           if (unconfirmed && unconfirmed.length > 0) {
-            console.log(
-              `[CRON] Auto-calling ${unconfirmed.length} unconfirmed for drive ${drive.id}`,
+            cronLogger.info(
+              { count: unconfirmed.length, driveId: drive.id },
+              "Auto-calling unconfirmed volunteers",
             );
             await retell.batchCall(
               drive.id,
@@ -144,15 +151,17 @@ export function setupCronJobs(
           }
         }
       }
-    } catch (error) {
-      console.error("[CRON] AI call trigger error:", error);
-    }
+    }, {
+      schedule: { type: "crontab", value: "* * * * *" },
+    }).catch((error) => {
+      cronLogger.error({ err: error }, "AI call trigger error");
+    });
   }).start();
 
   // Update sunset times - daily at 2 AM PKT (21:00 UTC previous day)
-  new CronJob("0 21 * * *", async () => {
-    console.log("[CRON] Updating sunset times");
-    try {
+  new CronJob("0 21 * * *", () => {
+    Sentry.withMonitor("sunset-time-update", async () => {
+      cronLogger.info("Updating sunset times");
       const today = new Date();
       const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -184,14 +193,16 @@ export function setupCronJobs(
           // Skip if Aladhan API fails
         }
       }
-    } catch (error) {
-      console.error("[CRON] Sunset update error:", error);
-    }
+    }, {
+      schedule: { type: "crontab", value: "0 21 * * *" },
+    }).catch((error) => {
+      cronLogger.error({ err: error }, "Sunset update error");
+    });
   }).start();
 
   // Waitlist promotion - every 2 minutes
-  new CronJob("*/2 * * * *", async () => {
-    try {
+  new CronJob("*/2 * * * *", () => {
+    Sentry.withMonitor("waitlist-promotion", async () => {
       const { data: config } = await supabase
         .from("app_config")
         .select("value")
@@ -263,14 +274,16 @@ export function setupCronJobs(
           }
         }
       }
-    } catch (error) {
-      console.error("[CRON] Waitlist promotion error:", error);
-    }
+    }, {
+      schedule: { type: "crontab", value: "*/2 * * * *" },
+    }).catch((error) => {
+      cronLogger.error({ err: error }, "Waitlist promotion error");
+    });
   }).start();
 
   // Send scheduled WhatsApp messages - every minute
-  new CronJob("* * * * *", async () => {
-    try {
+  new CronJob("* * * * *", () => {
+    Sentry.withMonitor("scheduled-messages", async () => {
       const now = new Date().toISOString();
       const { data: pending } = await supabase
         .from("scheduled_messages")
@@ -349,55 +362,58 @@ export function setupCronJobs(
             .update({ status: "sent", sent_at: new Date().toISOString() })
             .eq("id", msg.id);
         } catch (error: any) {
-          console.error(`[CRON] Failed to send scheduled message ${msg.id}:`, error);
+          cronLogger.error({ err: error, messageId: msg.id }, "Failed to send scheduled message");
           await supabase
             .from("scheduled_messages")
             .update({ status: "failed", error: error.message || "Send failed" })
             .eq("id", msg.id);
         }
       }
-    } catch (error) {
-      console.error("[CRON] Scheduled message send error:", error);
-    }
+    }, {
+      schedule: { type: "crontab", value: "* * * * *" },
+    }).catch((error) => {
+      cronLogger.error({ err: error }, "Scheduled message send error");
+    });
   }).start();
 
   // WhatsApp health check - every 5 minutes
-  new CronJob("*/5 * * * *", async () => {
-    if (whatsapp.getStatus() === "disconnected") {
-      console.log("[CRON] WhatsApp disconnected, attempting reconnect...");
-      try {
+  new CronJob("*/5 * * * *", () => {
+    Sentry.withMonitor("whatsapp-health-check", async () => {
+      if (whatsapp.getStatus() === "disconnected") {
+        cronLogger.info("WhatsApp disconnected, attempting reconnect...");
         await whatsapp.autoReconnect();
-      } catch {
-        // Will retry next cycle
       }
-    }
+    }, {
+      schedule: { type: "crontab", value: "*/5 * * * *" },
+    }).catch(() => {
+      // Will retry next cycle
+    });
   }).start();
 
   // Drive status transitions - hourly
-  new CronJob("0 * * * *", async () => {
-    try {
+  new CronJob("0 * * * *", () => {
+    Sentry.withMonitor("drive-status-transitions", async () => {
       const today = new Date().toISOString().split("T")[0];
-      const yesterday = new Date(Date.now() - 86400000)
-        .toISOString()
-        .split("T")[0];
 
-      // Open → In Progress (on drive day)
+      // Open -> In Progress (on drive day)
       await supabase
         .from("drives")
         .update({ status: "in_progress" })
         .eq("status", "open")
         .eq("drive_date", today);
 
-      // In Progress → Completed (next day)
+      // In Progress -> Completed (next day)
       await supabase
         .from("drives")
         .update({ status: "completed" })
         .eq("status", "in_progress")
         .lt("drive_date", today);
-    } catch (error) {
-      console.error("[CRON] Drive status transition error:", error);
-    }
+    }, {
+      schedule: { type: "crontab", value: "0 * * * *" },
+    }).catch((error) => {
+      cronLogger.error({ err: error }, "Drive status transition error");
+    });
   }).start();
 
-  console.log("[CRON] All cron jobs scheduled");
+  cronLogger.info("All cron jobs scheduled");
 }

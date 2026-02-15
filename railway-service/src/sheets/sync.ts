@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { google } from "googleapis";
+import { sheetsLogger } from "../lib/logger";
 
 export class GoogleSheetsSync {
   private supabase: SupabaseClient;
@@ -129,7 +130,7 @@ export class GoogleSheetsSync {
 
         synced++;
       } catch (error) {
-        console.error(`Error processing row ${startRow + i}:`, error);
+        sheetsLogger.error({ err: error, row: startRow + i }, "Error processing sheet row");
       }
     }
 

@@ -4,6 +4,7 @@ import {
   batchAutoAssign,
   promoteWaitlist,
 } from "@/lib/assignment/auto-assign";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -15,7 +16,8 @@ export async function POST(request: NextRequest) {
   let body: { driveId?: string };
   try {
     body = await request.json();
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json(
       { error: "Invalid JSON body" },
       { status: 400 }

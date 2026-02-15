@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { autoAssignVolunteer } from "@/lib/assignment/auto-assign";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ assignments });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[auto-assign]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Auto-assign failed" },

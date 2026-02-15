@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/utils";
+import * as Sentry from "@sentry/nextjs";
 
 type WindowConfig = {
   mode: "next_n_days" | "next_m_drives" | "manual";
@@ -118,6 +119,7 @@ export async function GET(request: NextRequest) {
       existingDriveIds,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[signup-context]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to load signup context" },
