@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/utils";
 import { autoAssignVolunteer } from "@/lib/assignment/auto-assign";
@@ -111,10 +112,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fire-and-forget: add volunteer to WhatsApp group + announce
-    addToWhatsAppGroup(normalizedPhone, name.trim(), assignments).catch((err) =>
-      console.error("[volunteer-register] WhatsApp group add failed:", err),
-    );
+    // Run after response is sent — keeps the serverless function alive on Vercel
+    after(async () => {
+      try {
+        await addToWhatsAppGroup(normalizedPhone, name.trim(), assignments);
+      } catch (err) {
+        console.error("[volunteer-register] WhatsApp group add failed:", err);
+      }
+    });
 
     return NextResponse.json({
       volunteerId: volunteerRow.id,
