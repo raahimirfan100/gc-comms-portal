@@ -38,18 +38,15 @@ export default function NewVolunteerPage() {
     const formData = new FormData(e.currentTarget);
     const phone = normalizePhone(formData.get("phone") as string);
 
-    const { error } = await supabase.from("volunteers").upsert(
-      {
-        phone,
-        name: formData.get("name") as string,
-        email: (formData.get("email") as string) || null,
-        gender: formData.get("gender") as "male" | "female",
-        organization: (formData.get("organization") as string) || null,
-        source: "manual" as const,
-        notes: (formData.get("notes") as string) || null,
-      },
-      { onConflict: "phone" },
-    );
+    const { error } = await supabase.from("volunteers").insert({
+      phone,
+      name: formData.get("name") as string,
+      email: (formData.get("email") as string) || null,
+      gender: formData.get("gender") as "male" | "female",
+      organization: (formData.get("organization") as string) || null,
+      source: "manual" as const,
+      notes: (formData.get("notes") as string) || null,
+    });
 
     setLoading(false);
     if (error) {

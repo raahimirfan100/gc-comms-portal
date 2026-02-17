@@ -9,18 +9,24 @@ export const hasEnvVars =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export function normalizePhone(phone: string): string {
+export function normalizePhone(phone: string, countryCode: string = "+92"): string {
   let cleaned = phone.replace(/[\s\-\(\)]/g, "");
-  if (cleaned.startsWith("03")) {
-    cleaned = "+92" + cleaned.slice(1);
-  } else if (cleaned.startsWith("92")) {
-    cleaned = "+" + cleaned;
-  } else if (cleaned.startsWith("0092")) {
-    cleaned = "+" + cleaned.slice(2);
-  } else if (!cleaned.startsWith("+")) {
-    cleaned = "+92" + cleaned;
+  // Already has + prefix — return as-is
+  if (cleaned.startsWith("+")) {
+    return cleaned;
   }
-  return cleaned;
+  // 00 international prefix (e.g. 0092314…)
+  if (cleaned.startsWith("00")) {
+    return "+" + cleaned.slice(2);
+  }
+  // Country code without + (e.g. 92314… when countryCode is +92)
+  const codeDigits = countryCode.replace("+", "");
+  if (cleaned.startsWith(codeDigits)) {
+    return "+" + cleaned;
+  }
+  // Strip leading zeros (e.g. 0321… → 321…) then prepend country code
+  cleaned = cleaned.replace(/^0+/, "");
+  return countryCode + cleaned;
 }
 
 export function formatPhone(phone: string): string {

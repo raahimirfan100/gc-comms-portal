@@ -136,17 +136,14 @@ export default function BulkImportPage() {
     const errs: string[] = [];
 
     for (const row of parsed) {
-      const { error } = await supabase.from("volunteers").upsert(
-        {
-          phone: row.phone,
-          name: row.name,
-          email: row.email || null,
-          gender: row.gender as "male" | "female",
-          organization: row.organization || null,
-          source: "bulk_import" as const,
-        },
-        { onConflict: "phone" },
-      );
+      const { error } = await supabase.from("volunteers").insert({
+        phone: row.phone,
+        name: row.name,
+        email: row.email || null,
+        gender: row.gender as "male" | "female",
+        organization: row.organization || null,
+        source: "bulk_import" as const,
+      });
 
       if (error) {
         errs.push(`${row.name} (${row.phone}): ${error.message}`);

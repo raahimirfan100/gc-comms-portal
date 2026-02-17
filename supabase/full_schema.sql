@@ -48,8 +48,6 @@ create table public.volunteers (
   updated_at timestamptz not null default now()
 );
 
-create unique index volunteers_phone_unique on public.volunteers (phone);
-
 create trigger handle_volunteers_updated_at
   before update on public.volunteers
   for each row

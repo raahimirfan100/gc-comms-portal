@@ -84,20 +84,17 @@ export class GoogleSheetsSync {
         const data = this.parseRow(headers, row);
         if (!data.name || !data.phone) continue;
 
-        // Upsert volunteer
+        // Insert volunteer
         const { data: volunteer } = await this.supabase
           .from("volunteers")
-          .upsert(
-            {
-              phone: this.normalizePhone(data.phone),
-              name: data.name,
-              email: data.email || null,
-              gender: data.gender || "male",
-              organization: data.organization || null,
-              source: "google_form",
-            },
-            { onConflict: "phone" },
-          )
+          .insert({
+            phone: this.normalizePhone(data.phone),
+            name: data.name,
+            email: data.email || null,
+            gender: data.gender || "male",
+            organization: data.organization || null,
+            source: "google_form",
+          })
           .select("id")
           .single();
 
@@ -202,13 +199,10 @@ export class GoogleSheetsSync {
 
   private normalizePhone(phone: string): string {
     let cleaned = phone.replace(/[\s\-\(\)]/g, "");
-    if (cleaned.startsWith("03")) {
-      cleaned = "+92" + cleaned.slice(1);
-    } else if (cleaned.startsWith("92")) {
-      cleaned = "+" + cleaned;
-    } else if (!cleaned.startsWith("+")) {
-      cleaned = "+92" + cleaned;
-    }
-    return cleaned;
+    if (cleaned.startsWith("+")) return cleaned;
+    if (cleaned.startsWith("00")) return "+" + cleaned.slice(2);
+    if (cleaned.startsWith("92")) return "+" + cleaned;
+    cleaned = cleaned.replace(/^0+/, "");
+    return "+92" + cleaned;
   }
 }
