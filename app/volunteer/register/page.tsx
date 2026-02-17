@@ -67,6 +67,7 @@ export default function VolunteerRegisterPage() {
   const [submitted, setSubmitted] = useState(false);
   const [assignmentInfo, setAssignmentInfo] = useState("");
   const [noDrivesAvailable, setNoDrivesAvailable] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -145,21 +146,31 @@ export default function VolunteerRegisterPage() {
     e.preventDefault();
     if (selectedDrives.length === 0) return;
     setLoading(true);
+    setSubmitError("");
 
-    const res = await fetch("/api/public/volunteer-register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        phone,
-        name: name.trim(),
-        email: email.trim() || null,
-        gender: gender as "male" | "female",
-        organization: organization.trim() || null,
-        driveIds: selectedDrives,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/public/volunteer-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone,
+          name: name.trim(),
+          email: email.trim() || null,
+          gender: gender as "male" | "female",
+          organization: organization.trim() || null,
+          driveIds: selectedDrives,
+        }),
+      });
+    } catch {
+      setSubmitError("Could not reach the server. Please check your connection and try again.");
+      setLoading(false);
+      return;
+    }
 
     if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSubmitError(data.error || "Registration failed. Please try again.");
       setLoading(false);
       return;
     }
@@ -501,6 +512,10 @@ export default function VolunteerRegisterPage() {
                     fulfill my assigned duties to the best of my ability.
                   </Label>
                 </div>
+
+                {submitError && (
+                  <p className="text-sm text-destructive">{submitError}</p>
+                )}
 
                 <Button
                   type="submit"

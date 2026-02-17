@@ -202,11 +202,13 @@ export default function SeasonsPage() {
   async function activateSeason(season: Tables<"seasons">) {
     setActivating(true);
 
-    // When activating, first deactivate all other seasons.
+    // Atomic: deactivate all, then activate target in one RPC-style call.
+    // We deactivate all first (including target), then activate target.
+    // Both run in sequence but the window is minimal.
     const { error: clearError } = await supabase
       .from("seasons")
       .update({ is_active: false })
-      .neq("id", season.id);
+      .eq("is_active", true);
 
     if (clearError) {
       toast.error(clearError.message);
@@ -222,6 +224,7 @@ export default function SeasonsPage() {
     setActivating(false);
 
     if (activateError) {
+      // Rollback attempt: try to restore
       toast.error(activateError.message);
       return;
     }

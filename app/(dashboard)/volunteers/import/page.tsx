@@ -32,6 +32,37 @@ interface ParsedRow {
   organization: string;
 }
 
+/** Parse a single CSV line respecting quoted fields (handles commas inside quotes). */
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        fields.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 export default function BulkImportPage() {
   const supabase = createClient();
   const [csvText, setCsvText] = useState("");
@@ -47,7 +78,7 @@ export default function BulkImportPage() {
       return;
     }
 
-    const headers = lines[0].toLowerCase().split(",").map((h) => h.trim());
+    const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
     const nameIdx = headers.findIndex((h) => h.includes("name"));
     const phoneIdx = headers.findIndex((h) => h.includes("phone"));
     const emailIdx = headers.findIndex((h) => h.includes("email"));
@@ -62,18 +93,25 @@ export default function BulkImportPage() {
     }
 
     const rows: ParsedRow[] = [];
+    let skipped = 0;
     for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(",").map((c) => c.trim());
-      if (!cols[nameIdx] || !cols[phoneIdx]) continue;
+      const line = lines[i].replace(/\r$/, "");
+      if (!line.trim()) { skipped++; continue; }
+      const cols = parseCsvLine(line);
+      if (!cols[nameIdx] || !cols[phoneIdx]) { skipped++; continue; }
 
-      const genderRaw = genderIdx >= 0 ? cols[genderIdx]?.toLowerCase() : "";
-      let gender = "male";
-      if (
-        genderRaw.includes("female") ||
-        genderRaw.includes("f") ||
-        genderRaw === "f"
-      ) {
+      const genderRaw = genderIdx >= 0 ? cols[genderIdx]?.toLowerCase().trim() : "";
+      let gender = "";
+      if (genderRaw === "female" || genderRaw === "f") {
         gender = "female";
+      } else if (genderRaw === "male" || genderRaw === "m") {
+        gender = "male";
+      }
+
+      if (!gender) {
+        toast.error(`Row ${i + 1} (${cols[nameIdx]}): missing or invalid gender. Use 'male'/'female' or 'm'/'f'.`);
+        skipped++;
+        continue;
       }
 
       rows.push({
@@ -86,7 +124,9 @@ export default function BulkImportPage() {
     }
 
     setParsed(rows);
-    toast.success(`Parsed ${rows.length} rows`);
+    const msg = `Parsed ${rows.length} rows` + (skipped > 0 ? ` (${skipped} skipped)` : "");
+    if (rows.length > 0) toast.success(msg);
+    else toast.error("No valid rows found. Check your CSV format.");
   }
 
   async function handleImport() {

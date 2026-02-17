@@ -30,6 +30,13 @@ export function setupCronJobs(
   // Send reminders - every minute
   new CronJob("* * * * *", () => {
     Sentry.withMonitor("send-reminders", async () => {
+      const { data: waConf } = await supabase
+        .from("app_config")
+        .select("value")
+        .eq("key", "whatsapp")
+        .single();
+      if (!(waConf?.value as any)?.enabled) return;
+
       const now = new Date().toISOString();
       const { data: pendingReminders } = await supabase
         .from("reminder_schedules")
@@ -247,10 +254,25 @@ export function setupCronJobs(
         if (!waitlist) continue;
 
         for (const entry of waitlist) {
-          // Delete waitlist entry and re-run assignment
-          await supabase.from("assignments").delete().eq("id", entry.id);
+          // Atomically delete only if still waitlisted (prevents double-processing)
+          const { data: deleted } = await supabase
+            .from("assignments")
+            .delete()
+            .eq("id", entry.id)
+            .eq("status", "waitlisted")
+            .select("id");
 
-          // Simple re-assignment: try first available duty
+          // If nothing was deleted, another cron run already promoted this entry
+          if (!deleted || deleted.length === 0) continue;
+
+          // Re-fetch capacity since previous iterations may have filled slots
+          const { data: freshDuties } = await supabase
+            .from("drive_duties")
+            .select("duty_id, calculated_capacity, manual_capacity_override, current_assigned")
+            .eq("drive_id", driveId);
+
+          if (!freshDuties) continue;
+
           const { data: volunteer } = await supabase
             .from("volunteers")
             .select("gender")
@@ -259,18 +281,32 @@ export function setupCronJobs(
 
           if (!volunteer) continue;
 
-          for (const dd of driveDuties!) {
+          let assigned = false;
+          for (const dd of freshDuties) {
             const cap = dd.manual_capacity_override ?? dd.calculated_capacity;
             if (dd.current_assigned >= cap) continue;
 
-            await supabase.from("assignments").insert({
+            const { error } = await supabase.from("assignments").insert({
               volunteer_id: entry.volunteer_id,
               drive_id: driveId,
               duty_id: dd.duty_id,
               status: "assigned",
               assigned_by: "waitlist_promotion",
             });
+            if (!error) assigned = true;
             break;
+          }
+
+          // If no slot found, re-waitlist the volunteer
+          if (!assigned) {
+            await supabase.from("assignments").insert({
+              volunteer_id: entry.volunteer_id,
+              drive_id: driveId,
+              duty_id: freshDuties[0]?.duty_id,
+              status: "waitlisted",
+              assigned_by: "waitlist_promotion",
+              waitlist_position: entry.id, // preserve ordering hint
+            });
           }
         }
       }
@@ -284,6 +320,13 @@ export function setupCronJobs(
   // Send scheduled WhatsApp messages - every minute
   new CronJob("* * * * *", () => {
     Sentry.withMonitor("scheduled-messages", async () => {
+      const { data: waConf } = await supabase
+        .from("app_config")
+        .select("value")
+        .eq("key", "whatsapp")
+        .single();
+      if (!(waConf?.value as any)?.enabled) return;
+
       const now = new Date().toISOString();
       const { data: pending } = await supabase
         .from("scheduled_messages")
@@ -374,6 +417,114 @@ export function setupCronJobs(
     }).catch((error) => {
       cronLogger.error({ err: error }, "Scheduled message send error");
     });
+  }).start();
+
+  // Auto-reminders for upcoming drives - every 30 minutes
+  new CronJob("*/30 * * * *", async () => {
+    try {
+      const { data: config } = await supabase
+        .from("app_config")
+        .select("value")
+        .eq("key", "whatsapp")
+        .single();
+
+      const waConfig = config?.value as {
+        enabled?: boolean;
+        auto_reminders_enabled?: boolean;
+        auto_reminder_template?: string;
+      } | null;
+      if (!waConfig?.enabled || !waConfig?.auto_reminders_enabled) return;
+
+      const template =
+        waConfig.auto_reminder_template ||
+        "Assalam o Alaikum {name}! Reminder: You are assigned to {duty} for {drive_name} at {location}. {days_remaining} day(s) remaining. Please confirm by replying YES.";
+
+      const today = new Date().toISOString().split("T")[0];
+      const { data: drives } = await supabase
+        .from("drives")
+        .select("id, name, drive_date, location_name, sunset_time")
+        .gte("drive_date", today)
+        .in("status", ["open", "in_progress"]);
+
+      if (!drives || drives.length === 0) return;
+
+      const now = new Date();
+
+      for (const drive of drives) {
+        const driveDate = new Date(drive.drive_date + "T00:00:00");
+        const diffMs = driveDate.getTime() - new Date(today + "T00:00:00").getTime();
+        const daysRemaining = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+        // Determine the dedup window based on urgency
+        // >1 day away: 1 reminder per day (24h window)
+        // ≤1 day away: every 12 hours (12h window)
+        const windowHours = daysRemaining > 1 ? 24 : 12;
+        const windowStart = new Date(
+          now.getTime() - windowHours * 60 * 60 * 1000,
+        ).toISOString();
+
+        // Get assigned/confirmed volunteers for this drive
+        const { data: assignments } = await supabase
+          .from("assignments")
+          .select("volunteer_id, duty_id, volunteers(name, phone), duties(name)")
+          .eq("drive_id", drive.id)
+          .in("status", ["assigned", "confirmed"]);
+
+        if (!assignments || assignments.length === 0) continue;
+
+        // Check which volunteers already received an auto-reminder in this window
+        const volunteerIds = assignments.map((a) => a.volunteer_id);
+        const { data: recentLogs } = await supabase
+          .from("communication_log")
+          .select("volunteer_id")
+          .eq("drive_id", drive.id)
+          .eq("channel", "whatsapp")
+          .eq("direction", "outbound")
+          .like("content", "[auto-reminder]%")
+          .gte("sent_at", windowStart)
+          .in("volunteer_id", volunteerIds);
+
+        const alreadySent = new Set(
+          (recentLogs || []).map((l: { volunteer_id: string }) => l.volunteer_id),
+        );
+
+        for (const assignment of assignments) {
+          if (alreadySent.has(assignment.volunteer_id)) continue;
+
+          const volunteer = assignment.volunteers as any;
+          const duty = assignment.duties as any;
+          if (!volunteer?.phone) continue;
+
+          const message = "[auto-reminder] " + template
+            .replace(/{name}/g, volunteer.name || "")
+            .replace(/{duty}/g, duty?.name || "")
+            .replace(/{drive_name}/g, drive.name || "")
+            .replace(/{location}/g, drive.location_name || "")
+            .replace(/{sunset_time}/g, drive.sunset_time || "")
+            .replace(/{days_remaining}/g, String(daysRemaining));
+
+          try {
+            await whatsapp.sendMessage(volunteer.phone, message);
+
+            await supabase.from("communication_log").insert({
+              volunteer_id: assignment.volunteer_id,
+              drive_id: drive.id,
+              channel: "whatsapp",
+              direction: "outbound",
+              content: message,
+              sent_at: new Date().toISOString(),
+            });
+          } catch (error) {
+            console.error(
+              `[CRON] Auto-reminder failed for ${volunteer.phone}:`,
+              error,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[CRON] Auto-reminder error:", error);
+    }
   }).start();
 
   // WhatsApp health check - every 5 minutes

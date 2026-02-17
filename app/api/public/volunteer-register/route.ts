@@ -3,8 +3,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/utils";
 import { autoAssignVolunteer } from "@/lib/assignment/auto-assign";
 import * as Sentry from "@sentry/nextjs";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimit(request, 10, 60_000);
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const {
@@ -147,7 +151,9 @@ async function addToWhatsAppGroup(
     .eq("key", "whatsapp")
     .single();
 
-  const groupJid = (config?.value as any)?.volunteer_group_jid;
+  const whatsappConfig = config?.value as any;
+  if (!whatsappConfig?.enabled) return;
+  const groupJid = whatsappConfig?.volunteer_group_jid;
   if (!groupJid) return;
 
   await fetch(`${railwayUrl}/api/whatsapp/group/add`, {
@@ -156,7 +162,13 @@ async function addToWhatsAppGroup(
       "Content-Type": "application/json",
       Authorization: `Bearer ${railwaySecret}`,
     },
-    body: JSON.stringify({ phone, groupJid, name, assignments }),
+    body: JSON.stringify({
+      phone,
+      groupJid,
+      name,
+      assignments,
+      welcomeTemplate: whatsappConfig?.welcome_dm_template || "",
+    }),
   });
 }
 

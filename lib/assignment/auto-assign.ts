@@ -64,12 +64,16 @@ interface DriveDutyWithDetails {
   } | null;
 }
 
+const MAX_ASSIGN_DEPTH = 3;
+
 export async function autoAssignVolunteer(
   supabase: SupabaseClient,
   volunteerId: string,
   driveId: string,
   assignedBy: string = "auto",
+  _depth: number = 0,
 ): Promise<AssignmentResult | null> {
+  if (_depth >= MAX_ASSIGN_DEPTH) return null;
   // Check if already assigned
   const { data: existing } = await supabase
     .from("assignments")
@@ -135,12 +139,35 @@ export async function autoAssignVolunteer(
         : [];
   }
 
-  // Get volunteer's duty history
-  const { data: history } = await supabase
+  // Get volunteer's duty history (scoped by history_lookback if configured)
+  let historyQuery = supabase
     .from("assignments")
-    .select("duty_id, duties(slug)")
+    .select("duty_id, duties(slug), drives(drive_date)")
     .eq("volunteer_id", volunteerId)
     .not("status", "in", '("cancelled","no_show","waitlisted")');
+
+  if (config.history_lookback === "current_season") {
+    // Scope to current drive's season by filtering to drives in the same season
+    const { data: currentDrive } = await supabase
+      .from("drives")
+      .select("season_id")
+      .eq("id", driveId)
+      .single();
+    if (currentDrive?.season_id) {
+      const { data: seasonDrives } = await supabase
+        .from("drives")
+        .select("id")
+        .eq("season_id", currentDrive.season_id);
+      if (seasonDrives) {
+        historyQuery = historyQuery.in(
+          "drive_id",
+          seasonDrives.map((d) => d.id),
+        );
+      }
+    }
+  }
+
+  const { data: history } = await historyQuery;
 
   // Helper: check if a duty has capacity
   function hasCapacity(dd: DriveDutyWithDetails): boolean {
@@ -253,10 +280,10 @@ export async function autoAssignVolunteer(
                 assigned_by: assignedBy,
               });
             } else {
-              await autoAssignVolunteer(supabase, row.volunteer_id, driveId, assignedBy);
+              await autoAssignVolunteer(supabase, row.volunteer_id, driveId, assignedBy, _depth + 1);
             }
           } else {
-            await autoAssignVolunteer(supabase, row.volunteer_id, driveId, assignedBy);
+            await autoAssignVolunteer(supabase, row.volunteer_id, driveId, assignedBy, _depth + 1);
           }
         }
         return result;
@@ -315,9 +342,9 @@ export async function autoAssignVolunteer(
   }
 
   // Step 3: All duties full — add to waitlist
-  const { data: waitlistCount } = await supabase
+  const { count: waitlistCount } = await supabase
     .from("assignments")
-    .select("id", { count: "exact" })
+    .select("id", { count: "exact", head: true })
     .eq("drive_id", driveId)
     .eq("status", "waitlisted");
 
@@ -332,7 +359,7 @@ export async function autoAssignVolunteer(
       duty_id: firstDuty.duty_id,
       status: "waitlisted",
       assigned_by: assignedBy,
-      waitlist_position: (waitlistCount?.length || 0) + 1,
+      waitlist_position: (waitlistCount ?? 0) + 1,
     });
 
     return {

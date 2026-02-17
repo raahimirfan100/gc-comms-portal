@@ -228,6 +228,6 @@ export class RetellClient {
       return "confirmed";
     }
 
-    return "confirmed"; // Default to confirmed if unclear
+    return "no_answer"; // Default to no_answer if intent is unclear — safer than false confirmation
   }
 }

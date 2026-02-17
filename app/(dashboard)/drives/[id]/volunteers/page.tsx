@@ -53,7 +53,7 @@ type Assignment = {
 type DriveDuty = {
   id: string;
   duty_id: string;
-  duties: { name: string } | null;
+  duties: { name: string; gender_restriction: string | null } | null;
 };
 
 const ACK_STATUSES = ["confirmed", "en_route", "arrived", "completed"];
@@ -154,7 +154,7 @@ export default function VolunteersPage() {
         .order("created_at"),
       supabase
         .from("drive_duties")
-        .select("id, duty_id, duties(name)")
+        .select("id, duty_id, duties(name, gender_restriction)")
         .eq("drive_id", driveId)
         .order("created_at"),
       supabase
@@ -177,6 +177,27 @@ export default function VolunteersPage() {
   }
 
   async function handleDutyChange(assignmentId: string, newDutyId: string) {
+    // Validate gender restriction before reassigning
+    const assignment = assignments.find((a) => a.id === assignmentId);
+    const targetDuty = driveDuties.find((dd) => dd.duty_id === newDutyId);
+    const genderRestriction = targetDuty?.duties?.gender_restriction;
+
+    if (genderRestriction && assignment?.volunteers) {
+      // Look up volunteer gender
+      const { data: vol } = await supabase
+        .from("volunteers")
+        .select("gender")
+        .eq("id", assignment.volunteer_id)
+        .single();
+
+      if (vol && genderRestriction !== vol.gender) {
+        toast.error(
+          `Cannot assign to ${targetDuty?.duties?.name} — restricted to ${genderRestriction} volunteers`,
+        );
+        return;
+      }
+    }
+
     setSavingDuty(assignmentId);
     const { error } = await supabase
       .from("assignments")

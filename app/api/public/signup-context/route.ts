@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/utils";
 import * as Sentry from "@sentry/nextjs";
+import { rateLimit } from "@/lib/rate-limit";
 
 type WindowConfig = {
   mode: "next_n_days" | "next_m_drives" | "manual";
@@ -14,6 +15,8 @@ type WindowConfig = {
 const DEFAULT_WINDOW: WindowConfig = { mode: "next_n_days", days: 7 };
 
 export async function GET(request: NextRequest) {
+  const limited = rateLimit(request, 30, 60_000);
+  if (limited) return limited;
   try {
     const { searchParams } = new URL(request.url);
     const phoneRaw = searchParams.get("phone");
