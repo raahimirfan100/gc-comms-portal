@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { cn, normalizePhone, formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,22 +41,23 @@ type Drive = {
   notes: string | null;
 };
 
-type VolunteerPrefill = {
-  name: string;
-  email: string | null;
-  gender: string;
-  organization: string | null;
-};
+const COUNTRY_CODES = [
+  { value: "+92", label: "PK +92" },
+  { value: "+971", label: "AE +971" },
+  { value: "+966", label: "SA +966" },
+  { value: "+91", label: "IN +91" },
+  { value: "+44", label: "UK +44" },
+  { value: "+1", label: "US +1" },
+];
 
 export default function VolunteerRegisterPage() {
   const [phoneConfirmed, setPhoneConfirmed] = useState(false);
   const [phone, setPhone] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
+  const [countryCode, setCountryCode] = useState("+92");
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [drives, setDrives] = useState<Drive[]>([]);
-  const [volunteer, setVolunteer] = useState<VolunteerPrefill | null>(null);
-  const [existingDriveIds, setExistingDriveIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [gender, setGender] = useState("");
@@ -69,12 +70,6 @@ export default function VolunteerRegisterPage() {
   const [noDrivesAvailable, setNoDrivesAvailable] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem("gc_volunteer_phone");
-    if (saved) setPhoneInput(saved);
-  }, []);
-
   async function handlePhoneContinue(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const raw = phoneInput.trim();
@@ -82,15 +77,10 @@ export default function VolunteerRegisterPage() {
     setPhoneError("");
     setPhoneLoading(true);
     try {
-      const res = await fetch(
-        `/api/public/signup-context?phone=${encodeURIComponent(raw)}`,
-      );
+      const res = await fetch("/api/public/signup-context");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load");
 
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("gc_volunteer_phone", raw);
-      }
       const driveList = data.drives ?? [];
       if (driveList.length === 0) {
         setNoDrivesAvailable(true);
@@ -98,22 +88,13 @@ export default function VolunteerRegisterPage() {
         return;
       }
       setNoDrivesAvailable(false);
-      setPhone(normalizePhone(raw));
+      setPhone(normalizePhone(raw, countryCode));
       setDrives(driveList);
-      setVolunteer(data.volunteer ?? null);
-      setExistingDriveIds(data.existingDriveIds ?? []);
-      if (data.volunteer) {
-        setName(data.volunteer.name);
-        setEmail(data.volunteer.email ?? "");
-        setGender(data.volunteer.gender);
-        setOrganization(data.volunteer.organization ?? "");
-      } else {
-        setName("");
-        setEmail("");
-        setGender("");
-        setOrganization("");
-      }
-      setSelectedDrives(data.existingDriveIds ?? []);
+      setName("");
+      setEmail("");
+      setGender("");
+      setOrganization("");
+      setSelectedDrives([]);
       setPhoneConfirmed(true);
     } catch (err) {
       setPhoneError(
@@ -127,8 +108,6 @@ export default function VolunteerRegisterPage() {
   function handleChangePhone() {
     setPhoneConfirmed(false);
     setDrives([]);
-    setVolunteer(null);
-    setExistingDriveIds([]);
     setSelectedDrives([]);
     setAgreed(false);
     setNoDrivesAvailable(false);
@@ -256,38 +235,76 @@ export default function VolunteerRegisterPage() {
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handlePhoneContinue} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      placeholder="03XX-XXXXXXX"
-                      value={phoneInput}
-                      onChange={(e) => setPhoneInput(e.target.value)}
-                      required
-                      autoFocus
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Use the same number you&apos;ve used before if
-                      you&apos;ve signed up before, so we can load your
-                      details.
+                <>
+                  {/* Instructions Block */}
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-3 text-sm">
+                    <p>
+                      <strong>Grand Citizens</strong> is a volunteer-run
+                      organization that serves Iftaar to those in need during
+                      Ramadan.
                     </p>
-                    {phoneError && (
-                      <p className="text-sm text-destructive">{phoneError}</p>
-                    )}
+                    <p>
+                      We set up open-air Iftaar drives across Karachi where
+                      volunteers help with cooking, serving, traffic management,
+                      and more.
+                    </p>
+                    <div>
+                      <p className="font-medium mb-1">Dress Code:</p>
+                      <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                        <li>Male: White shalwar kameez with white topi</li>
+                        <li>Female: Black abaya with hijab</li>
+                      </ul>
+                    </div>
+                    <p className="font-medium">
+                      Fill out the form below to sign up as a volunteer!
+                    </p>
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={phoneLoading}
-                  >
-                    {phoneLoading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Continue
-                  </Button>
-                </form>
+
+                  <form onSubmit={handlePhoneContinue} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number *</Label>
+                      <div className="flex gap-2">
+                        <Select value={countryCode} onValueChange={setCountryCode}>
+                          <SelectTrigger className="w-[120px] shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COUNTRY_CODES.map((cc) => (
+                              <SelectItem key={cc.value} value={cc.value}>
+                                {cc.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          placeholder="3XX XXXXXXX"
+                          value={phoneInput}
+                          onChange={(e) => setPhoneInput(e.target.value)}
+                          required
+                          autoFocus
+                        />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Please enter a number that is registered on WhatsApp.
+                      </p>
+                      {phoneError && (
+                        <p className="text-sm text-destructive">{phoneError}</p>
+                      )}
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={phoneLoading}
+                    >
+                      {phoneLoading && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Continue
+                    </Button>
+                  </form>
+                </>
               )}
             </>
           ) : (
@@ -296,7 +313,7 @@ export default function VolunteerRegisterPage() {
               <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
                 <div className="text-sm">
                   <span className="text-muted-foreground">Phone: </span>
-                  <span className="font-medium">{phoneInput}</span>
+                  <span className="font-medium">{countryCode} {phoneInput}</span>
                 </div>
                 <button
                   type="button"
@@ -367,7 +384,6 @@ export default function VolunteerRegisterPage() {
                 <div className="space-y-3">
                   {drives.map((drive) => {
                     const isSelected = selectedDrives.includes(drive.id);
-                    const isExisting = existingDriveIds.includes(drive.id);
 
                     const destination =
                       drive.location_lat != null && drive.location_lng != null
@@ -395,9 +411,7 @@ export default function VolunteerRegisterPage() {
                             ? "border-primary bg-primary/5"
                             : "hover:border-primary/40",
                         )}
-                        onClick={() => {
-                          if (!isExisting) toggleDrive(drive.id);
-                        }}
+                        onClick={() => toggleDrive(drive.id)}
                       >
                         <CardContent className="px-3 py-2 md:px-4 md:py-3">
                           <div className="flex flex-col gap-2 md:flex-row">
@@ -431,10 +445,7 @@ export default function VolunteerRegisterPage() {
                             <div className="flex-1 space-y-2">
                               <div className="flex items-start justify-between gap-3">
                                 <div>
-                                  <div className="text-sm font-semibold">
-                                    {drive.name}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">
+                                  <div className="text-base font-bold">
                                     {new Date(
                                       drive.drive_date,
                                     ).toLocaleDateString("en-PK", {
@@ -442,6 +453,9 @@ export default function VolunteerRegisterPage() {
                                       day: "numeric",
                                       month: "long",
                                     })}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {drive.name}
                                   </p>
                                 </div>
                                 <div
@@ -450,10 +464,7 @@ export default function VolunteerRegisterPage() {
                                 >
                                   <Checkbox
                                     checked={isSelected}
-                                    disabled={isExisting}
-                                    onCheckedChange={() => {
-                                      if (!isExisting) toggleDrive(drive.id);
-                                    }}
+                                    onCheckedChange={() => toggleDrive(drive.id)}
                                   />
                                   <span className="text-xs font-medium">
                                     I&apos;ll attend
