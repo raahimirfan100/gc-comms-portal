@@ -116,59 +116,16 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
   const { phone, groupJid, name, assignments, welcomeTemplate } = req.body;
   try {
     const { added } = await whatsapp.addToGroup(phone, groupJid);
+    const skipDm = welcomeTemplate === "__skip_dm__";
 
-    const dutyLines = Array.isArray(assignments) && assignments.length > 0
-      ? assignments.map((a: { drive: string; duty: string }) => `• ${a.drive}: ${a.duty}`).join("\n")
-      : "";
-
-    // Look up volunteer for logging
-    const normalizedPhone = phone.startsWith("+") ? phone : `+${phone}`;
-    const { data: volunteer } = await supabase
-      .from("volunteers")
-      .select("id")
-      .eq("phone", normalizedPhone)
-      .maybeSingle();
-
-    // Helper: send DM with retry and log to communication_log
-    async function sendWelcomeDm(message: string) {
-      // Small delay after group-add to let WhatsApp propagate
-      await new Promise((r) => setTimeout(r, 2000));
-
-      let sent = false;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          await whatsapp.sendMessage(phone, message);
-          sent = true;
-          break;
-        } catch (err) {
-          logger.warn({ err, phone, attempt }, "Welcome DM send failed, retrying");
-          if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
-        }
-      }
-
-      // Log to communication_log regardless of success
-      if (volunteer?.id) {
-        await supabase.from("communication_log").insert({
-          volunteer_id: volunteer.id,
-          channel: "whatsapp",
-          direction: "outbound",
-          content: sent ? message : `[FAILED] ${message}`,
-          sent_at: sent ? new Date().toISOString() : null,
-        });
-      }
-
-      if (!sent) {
-        logger.error({ phone }, "Welcome DM failed after 3 attempts");
-      }
-
-      return sent;
-    }
-
-    if (!added) {
-      // Fallback: send invite link via DM
+    if (!added && !skipDm) {
+      // Fallback: send invite link via DM (only when called directly, not from registration)
       const code = await whatsapp.getGroupInviteCode(groupJid);
       if (code) {
         const link = `https://chat.whatsapp.com/${code}`;
+        const dutyLines = Array.isArray(assignments) && assignments.length > 0
+          ? assignments.map((a: { drive: string; duty: string }) => `• ${a.drive}: ${a.duty}`).join("\n")
+          : "";
 
         const defaultMsg = `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n${link}`;
         const message = welcomeTemplate
@@ -178,7 +135,7 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
               .replace(/{group_link}/g, link)
           : defaultMsg;
 
-        await sendWelcomeDm(message);
+        await whatsapp.sendMessage(phone, message);
         res.json({ status: "invite_sent", link });
       } else {
         res.json({ status: "failed", error: "Could not add or generate invite" });
@@ -186,17 +143,8 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
       return;
     }
 
-    // Successfully added to group — send welcome DM
-    const defaultDm = `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive. You have been added to the volunteer group.`;
-    const dm = welcomeTemplate
-      ? welcomeTemplate
-          .replace(/{name}/g, name || "")
-          .replace(/{assignments}/g, dutyLines)
-          .replace(/{group_link}/g, "")
-      : defaultDm;
-
-    await sendWelcomeDm(dm);
-    res.json({ status: "added" });
+    // When called from registration (skipDm=true), DM is handled via scheduled_messages cron
+    res.json({ status: added ? "added" : "not_added" });
   } catch (error: any) {
     Sentry.captureException(error);
     res.status(500).json({ error: error.message });

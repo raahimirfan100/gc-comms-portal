@@ -112,12 +112,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Run after response is sent — keeps the serverless function alive on Vercel
+    // Queue WhatsApp welcome DM + group-add (runs after response is sent)
     after(async () => {
       try {
-        await addToWhatsAppGroup(normalizedPhone, name.trim(), assignments);
+        await queueWhatsAppWelcome(supabase, volunteerRow.id, normalizedPhone, name.trim(), assignments);
       } catch (err) {
-        console.error("[volunteer-register] WhatsApp group add failed:", err);
+        console.error("[volunteer-register] WhatsApp welcome queue failed:", err);
       }
     });
 
@@ -140,16 +140,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function addToWhatsAppGroup(
+async function queueWhatsAppWelcome(
+  supabase: ReturnType<typeof createAdminClient>,
+  volunteerId: string,
   phone: string,
   name: string,
   assignments: Array<{ drive: string; duty: string }>,
 ) {
-  const railwayUrl = process.env.RAILWAY_SERVICE_URL;
-  const railwaySecret = process.env.RAILWAY_API_SECRET;
-  if (!railwayUrl || !railwaySecret) return;
-
-  const supabase = createAdminClient();
   const { data: config } = await supabase
     .from("app_config")
     .select("value")
@@ -159,22 +156,47 @@ async function addToWhatsAppGroup(
   const whatsappConfig = config?.value as any;
   if (!whatsappConfig?.enabled) return;
   const groupJid = whatsappConfig?.volunteer_group_jid;
-  if (!groupJid) return;
 
-  await fetch(`${railwayUrl}/api/whatsapp/group/add`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${railwaySecret}`,
-    },
-    body: JSON.stringify({
-      phone,
-      groupJid,
-      name,
-      assignments,
-      welcomeTemplate: whatsappConfig?.welcome_dm_template || "",
-    }),
-    signal: AbortSignal.timeout(30000),
+  // 1. Try to add to group via Railway (fire-and-forget — group-add needs Baileys)
+  const railwayUrl = process.env.RAILWAY_SERVICE_URL;
+  const railwaySecret = process.env.RAILWAY_API_SECRET;
+  if (railwayUrl && railwaySecret && groupJid) {
+    try {
+      await fetch(`${railwayUrl}/api/whatsapp/group/add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${railwaySecret}`,
+        },
+        // Only add to group — DM handled via scheduled_messages below
+        body: JSON.stringify({ phone, groupJid, name, assignments, welcomeTemplate: "__skip_dm__" }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (err) {
+      console.error("[volunteer-register] Group add failed:", err);
+    }
+  }
+
+  // 2. Queue welcome DM via scheduled_messages — cron picks it up within 60s
+  const dutyLines = assignments.length > 0
+    ? assignments.map((a) => `• ${a.drive}: ${a.duty}`).join("\n")
+    : "";
+
+  const template = whatsappConfig?.welcome_dm_template || "";
+  const defaultMsg = `Assalamu Alaikum!\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive. You have been added to the volunteer group.`;
+  const message = template
+    ? template
+        .replace(/{name}/g, name)
+        .replace(/{assignments}/g, dutyLines)
+        .replace(/{group_link}/g, "")
+    : defaultMsg;
+
+  await supabase.from("scheduled_messages").insert({
+    volunteer_id: volunteerId,
+    channel: "whatsapp",
+    message,
+    scheduled_at: new Date().toISOString(),
+    status: "pending",
   });
 }
 
