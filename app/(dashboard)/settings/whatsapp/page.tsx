@@ -128,6 +128,7 @@ export default function WhatsAppSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [connectPollFails, setConnectPollFails] = useState(0);
   const [serviceHealth, setServiceHealth] = useState<{
     status: string;
     uptime: number;
@@ -173,9 +174,26 @@ export default function WhatsAppSettingsPage() {
         if (data.status === "connected" && groups.length === 0) {
           loadGroups();
         }
+      } else {
+        // Session endpoint failed — give it a few tries before giving up
+        setConnectPollFails((prev) => {
+          if (prev >= 5) {
+            setSession({ status: "disconnected" });
+            setConnecting(false);
+            return 0;
+          }
+          return prev + 1;
+        });
       }
     } catch {
-      setSession({ status: "disconnected" });
+      setConnectPollFails((prev) => {
+        if (prev >= 5) {
+          setSession({ status: "disconnected" });
+          setConnecting(false);
+          return 0;
+        }
+        return prev + 1;
+      });
     }
   }, []);
 
@@ -288,6 +306,7 @@ export default function WhatsAppSettingsPage() {
 
   async function handleConnect() {
     setConnecting(true);
+    setConnectPollFails(0);
     try {
       const res = await fetch("/api/whatsapp/connect", { method: "POST" });
       const data = await res.json();
