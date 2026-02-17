@@ -116,16 +116,16 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
   const { phone, groupJid, name, assignments, welcomeTemplate } = req.body;
   try {
     const { added } = await whatsapp.addToGroup(phone, groupJid);
+    const skipDm = welcomeTemplate === "__skip_dm__";
 
-    const dutyLines = Array.isArray(assignments) && assignments.length > 0
-      ? assignments.map((a: { drive: string; duty: string }) => `• ${a.drive}: ${a.duty}`).join("\n")
-      : "";
-
-    if (!added) {
-      // Fallback: send invite link via DM
+    if (!added && !skipDm) {
+      // Fallback: send invite link via DM (only when called directly, not from registration)
       const code = await whatsapp.getGroupInviteCode(groupJid);
       if (code) {
         const link = `https://chat.whatsapp.com/${code}`;
+        const dutyLines = Array.isArray(assignments) && assignments.length > 0
+          ? assignments.map((a: { drive: string; duty: string }) => `• ${a.drive}: ${a.duty}`).join("\n")
+          : "";
 
         const defaultMsg = `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n${link}`;
         const message = welcomeTemplate
@@ -143,22 +143,8 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
       return;
     }
 
-    // Successfully added to group — send welcome DM (no group announcement)
-    const defaultDm = `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive. You have been added to the volunteer group.`;
-    const dm = welcomeTemplate
-      ? welcomeTemplate
-          .replace(/{name}/g, name || "")
-          .replace(/{assignments}/g, dutyLines)
-          .replace(/{group_link}/g, "")
-      : defaultDm;
-
-    try {
-      await whatsapp.sendMessage(phone, dm);
-    } catch {
-      // Non-critical — volunteer is already in the group
-    }
-
-    res.json({ status: "added" });
+    // When called from registration (skipDm=true), DM is handled via scheduled_messages cron
+    res.json({ status: added ? "added" : "not_added" });
   } catch (error: any) {
     Sentry.captureException(error);
     res.status(500).json({ error: error.message });
