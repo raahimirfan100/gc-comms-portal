@@ -251,8 +251,8 @@ export default function VolunteerRegisterPage() {
                     <div>
                       <p className="font-medium mb-1">Dress Code:</p>
                       <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-                        <li>Male: White shalwar kameez with white topi</li>
-                        <li>Female: Black abaya with hijab</li>
+                        <li>Female: Shalwar Kameez</li>
+                        <li>Male: NOT allowed to wear Shalwar Kameez (higher risk of pick-pocketing), shorts, or sleeveless shirts</li>
                       </ul>
                     </div>
                     <p className="font-medium">
