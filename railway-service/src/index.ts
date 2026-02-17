@@ -113,19 +113,29 @@ app.get("/api/whatsapp/groups", authMiddleware, async (_req, res) => {
 });
 
 app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
-  const { phone, groupJid, name, assignments } = req.body;
+  const { phone, groupJid, name, assignments, welcomeTemplate } = req.body;
   try {
     const { added } = await whatsapp.addToGroup(phone, groupJid);
+
+    const dutyLines = Array.isArray(assignments) && assignments.length > 0
+      ? assignments.map((a: { drive: string; duty: string }) => `• ${a.drive}: ${a.duty}`).join("\n")
+      : "";
 
     if (!added) {
       // Fallback: send invite link via DM
       const code = await whatsapp.getGroupInviteCode(groupJid);
       if (code) {
         const link = `https://chat.whatsapp.com/${code}`;
-        await whatsapp.sendMessage(
-          phone,
-          `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n${link}`,
-        );
+
+        const defaultMsg = `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n${link}`;
+        const message = welcomeTemplate
+          ? welcomeTemplate
+              .replace(/{name}/g, name || "")
+              .replace(/{assignments}/g, dutyLines)
+              .replace(/{group_link}/g, link)
+          : defaultMsg;
+
+        await whatsapp.sendMessage(phone, message);
         res.json({ status: "invite_sent", link });
       } else {
         res.json({ status: "failed", error: "Could not add or generate invite" });
@@ -133,16 +143,19 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
       return;
     }
 
-    // Send announcement in the group
-    if (name && groupJid) {
-      const dutyLines = Array.isArray(assignments) && assignments.length > 0
-        ? assignments.map((a: { drive: string; duty: string }) => `• ${a.drive}: ${a.duty}`).join("\n")
-        : "Duties pending assignment";
+    // Successfully added to group — send welcome DM (no group announcement)
+    const defaultDm = `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive. You have been added to the volunteer group.`;
+    const dm = welcomeTemplate
+      ? welcomeTemplate
+          .replace(/{name}/g, name || "")
+          .replace(/{assignments}/g, dutyLines)
+          .replace(/{group_link}/g, "")
+      : defaultDm;
 
-      await whatsapp.sendGroupMessage(
-        groupJid,
-        `🌙 *New Volunteer Joined!*\n\n*${name}* has signed up for the Iftaar Drive.\n\n*Assignments:*\n${dutyLines}\n\nWelcome aboard! 🤝`,
-      );
+    try {
+      await whatsapp.sendMessage(phone, dm);
+    } catch {
+      // Non-critical — volunteer is already in the group
     }
 
     res.json({ status: "added" });
@@ -175,8 +188,8 @@ app.post("/api/calls/batch", authMiddleware, async (req, res) => {
   }
 });
 
-// Retell webhook handler
-app.post("/api/webhooks/retell", async (req, res) => {
+// Retell webhook handler (authenticated — same secret as other endpoints)
+app.post("/api/webhooks/retell", authMiddleware, async (req, res) => {
   try {
     await retell.handleWebhook(req.body);
     res.json({ received: true });
