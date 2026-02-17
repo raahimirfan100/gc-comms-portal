@@ -9,6 +9,8 @@ export class WhatsAppManager {
   private supabase: SupabaseClient;
   private sock: any = null;
   private status: string = "disconnected";
+  private connecting: boolean = false;
+  private processedMessageIds = new Set<string>();
 
   constructor(supabase: SupabaseClient) {
     this.supabase = supabase;
@@ -29,6 +31,13 @@ export class WhatsAppManager {
   }
 
   async connect(): Promise<void> {
+    // Mutex: prevent concurrent connect() calls
+    if (this.connecting) {
+      console.log("WhatsApp connect() already in progress, skipping");
+      return;
+    }
+    this.connecting = true;
+
     // Disconnect any existing session first
     await this.disconnect();
     try {
@@ -102,9 +111,12 @@ export class WhatsAppManager {
           await this.handleIncomingMessage(msg);
         }
       });
+
+      this.connecting = false;
     } catch (error) {
       whatsappLogger.error({ err: error }, "WhatsApp connection error");
       this.status = "disconnected";
+      this.connecting = false;
       throw error;
     }
   }
@@ -170,14 +182,32 @@ export class WhatsAppManager {
   }
 
   private async handleIncomingMessage(msg: any): Promise<void> {
+    const remoteJid: string = msg.key.remoteJid || "";
+
+    // Skip group messages — only process DMs
+    if (remoteJid.endsWith("@g.us")) return;
+
+    // Deduplication: skip messages we've already processed
+    const msgId = msg.key.id;
+    if (msgId && this.processedMessageIds.has(msgId)) return;
+    if (msgId) {
+      this.processedMessageIds.add(msgId);
+      // Cap the set size to prevent memory leak
+      if (this.processedMessageIds.size > 10000) {
+        const first = this.processedMessageIds.values().next().value;
+        if (first) this.processedMessageIds.delete(first);
+      }
+    }
+
     const text =
       msg.message?.conversation ||
       msg.message?.extendedTextMessage?.text ||
       "";
     if (!text) return;
 
-    const senderJid = msg.key.remoteJid;
-    const senderPhone = "+" + senderJid.split("@")[0];
+    // Bug fix #5: Normalize phone for lookup — try with and without "+"
+    const rawPhone = remoteJid.split("@")[0];
+    const phoneWithPlus = "+" + rawPhone;
 
     // Get WhatsApp config for keywords
     const { data: config } = await this.supabase
@@ -193,59 +223,115 @@ export class WhatsAppManager {
 
     if (!whatsappConfig) return;
 
-    const lowerText = text.toLowerCase().trim();
-
-    // Find volunteer by phone
-    const { data: volunteer } = await this.supabase
+    // Bug fix #5: Try both phone formats to find the volunteer
+    let volunteer: { id: string } | null = null;
+    const { data: v1 } = await this.supabase
       .from("volunteers")
       .select("id")
-      .eq("phone", senderPhone)
+      .eq("phone", phoneWithPlus)
       .single();
+    volunteer = v1;
+
+    if (!volunteer) {
+      const { data: v2 } = await this.supabase
+        .from("volunteers")
+        .select("id")
+        .eq("phone", rawPhone)
+        .single();
+      volunteer = v2;
+    }
 
     if (!volunteer) return;
 
-    // Check confirm keywords
-    if (whatsappConfig.confirm_keywords.some((k) => lowerText.includes(k))) {
-      await this.supabase
-        .from("assignments")
-        .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
-        .eq("volunteer_id", volunteer.id)
-        .eq("status", "assigned");
+    // Bug fix #2: Exact word matching instead of substring includes
+    const words = text.toLowerCase().trim().split(/\s+/);
 
-      // Log the communication
-      await this.supabase.from("communication_log").insert({
-        volunteer_id: volunteer.id,
-        channel: "whatsapp",
-        direction: "inbound",
-        content: text,
-        whatsapp_message_id: msg.key.id,
-      });
+    const isConfirm = whatsappConfig.confirm_keywords?.some((k) =>
+      words.includes(k.toLowerCase()),
+    );
+    const isCancel = whatsappConfig.cancel_keywords?.some((k) =>
+      words.includes(k.toLowerCase()),
+    );
+
+    if (isConfirm) {
+      // Bug fix #3: Only confirm the next upcoming drive, not all drives
+      const { data: nextAssignment } = await this.supabase
+        .from("assignments")
+        .select("id, drive_id, drives(drive_date)")
+        .eq("volunteer_id", volunteer.id)
+        .eq("status", "assigned")
+        .order("drives(drive_date)", { ascending: true })
+        .limit(1)
+        .single();
+
+      if (nextAssignment) {
+        await this.supabase
+          .from("assignments")
+          .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
+          .eq("id", nextAssignment.id);
+
+        // Bug fix #6: Include drive_id in log
+        await this.supabase.from("communication_log").insert({
+          volunteer_id: volunteer.id,
+          drive_id: nextAssignment.drive_id,
+          channel: "whatsapp",
+          direction: "inbound",
+          content: text,
+          whatsapp_message_id: msg.key.id,
+        });
+
+        // Bug fix #6: Send confirmation reply
+        try {
+          await this.sendMessage(phoneWithPlus, "Your attendance has been confirmed. JazakAllah Khair!");
+        } catch {
+          // Non-critical — don't fail if reply doesn't send
+        }
+      }
       return;
     }
 
-    // Check cancel keywords
-    if (whatsappConfig.cancel_keywords.some((k) => lowerText.includes(k))) {
-      await this.supabase
+    if (isCancel) {
+      // Bug fix #3: Only cancel the next upcoming drive assignment
+      const { data: nextAssignment } = await this.supabase
         .from("assignments")
-        .update({
-          status: "cancelled",
-          cancelled_at: new Date().toISOString(),
-          cancellation_reason: "WhatsApp cancel keyword",
-        })
+        .select("id, drive_id, drives(drive_date)")
         .eq("volunteer_id", volunteer.id)
-        .in("status", ["assigned", "confirmed"]);
+        .in("status", ["assigned", "confirmed"])
+        .order("drives(drive_date)", { ascending: true })
+        .limit(1)
+        .single();
 
-      await this.supabase.from("communication_log").insert({
-        volunteer_id: volunteer.id,
-        channel: "whatsapp",
-        direction: "inbound",
-        content: text,
-        whatsapp_message_id: msg.key.id,
-      });
+      if (nextAssignment) {
+        await this.supabase
+          .from("assignments")
+          .update({
+            status: "cancelled",
+            cancelled_at: new Date().toISOString(),
+            cancellation_reason: "WhatsApp cancel keyword",
+          })
+          .eq("id", nextAssignment.id);
+
+        // Bug fix #6: Include drive_id in log
+        await this.supabase.from("communication_log").insert({
+          volunteer_id: volunteer.id,
+          drive_id: nextAssignment.drive_id,
+          channel: "whatsapp",
+          direction: "inbound",
+          content: text,
+          whatsapp_message_id: msg.key.id,
+        });
+
+        // Bug fix #6: Send cancellation reply
+        try {
+          await this.sendMessage(phoneWithPlus, "Your assignment has been cancelled. If this was a mistake, please reply with 'confirm'.");
+        } catch {
+          // Non-critical
+        }
+      }
       return;
     }
 
-    // Unrecognized - just log
+    // Unrecognized message — just log it
     await this.supabase.from("communication_log").insert({
       volunteer_id: volunteer.id,
       channel: "whatsapp",
