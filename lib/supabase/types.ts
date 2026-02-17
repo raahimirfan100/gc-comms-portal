@@ -472,6 +472,63 @@ export type Database = {
           },
         ]
       }
+      scheduled_messages: {
+        Row: {
+          id: string
+          drive_id: string | null
+          volunteer_id: string | null
+          group_jid: string | null
+          channel: string
+          message: string
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          error: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          drive_id?: string | null
+          volunteer_id?: string | null
+          group_jid?: string | null
+          channel?: string
+          message: string
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string
+          error?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          drive_id?: string | null
+          volunteer_id?: string | null
+          group_jid?: string | null
+          channel?: string
+          message?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          error?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_messages_drive_id_fkey"
+            columns: ["drive_id"]
+            isOneToOne: false
+            referencedRelation: "drives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_messages_volunteer_id_fkey"
+            columns: ["volunteer_id"]
+            isOneToOne: false
+            referencedRelation: "volunteers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seasons: {
         Row: {
           created_at: string
