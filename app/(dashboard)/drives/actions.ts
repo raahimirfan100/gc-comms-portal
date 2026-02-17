@@ -113,7 +113,8 @@ export async function createDrive(formData: FormData) {
       };
     });
 
-    await supabase.from("drive_duties").insert(driveDuties);
+    const { error: dutiesError } = await supabase.from("drive_duties").insert(driveDuties);
+    if (dutiesError) return { error: `Drive created but duties failed: ${dutiesError.message}` };
   }
 
   // Create default reminder schedules
@@ -134,23 +135,28 @@ export async function createDrive(formData: FormData) {
 
     if (config.reminders) {
       const [hours, minutes] = sunsetTime.split(":").map(Number);
-      const reminders = config.reminders.map((r) => {
-        const sunsetMinutes = hours * 60 + minutes;
-        const reminderMinutes = sunsetMinutes - r.hours_before_sunset * 60;
-        const rHours = Math.floor(reminderMinutes / 60);
-        const rMins = reminderMinutes % 60;
-        const scheduledDate = new Date(`${driveDate}T${String(rHours).padStart(2, "0")}:${String(rMins).padStart(2, "0")}:00+05:00`);
+      const sunsetMinutes = hours * 60 + minutes;
+      const reminders = config.reminders
+        .map((r) => {
+          const reminderMinutes = sunsetMinutes - r.hours_before_sunset * 60;
+          // Skip reminders that would be scheduled before midnight (negative time)
+          if (reminderMinutes < 0) return null;
+          const rHours = Math.floor(reminderMinutes / 60);
+          const rMins = reminderMinutes % 60;
+          const scheduledDate = new Date(`${driveDate}T${String(rHours).padStart(2, "0")}:${String(rMins).padStart(2, "0")}:00+05:00`);
 
-        return {
-          drive_id: drive.id,
-          reminder_type: r.type,
-          hours_before_sunset: r.hours_before_sunset,
-          message_template: r.template,
-          scheduled_at: scheduledDate.toISOString(),
-        };
-      });
+          return {
+            drive_id: drive.id,
+            reminder_type: r.type,
+            hours_before_sunset: r.hours_before_sunset,
+            message_template: r.template,
+            scheduled_at: scheduledDate.toISOString(),
+          };
+        })
+        .filter(Boolean);
 
-      await supabase.from("reminder_schedules").insert(reminders);
+      const { error: reminderError } = await supabase.from("reminder_schedules").insert(reminders);
+      if (reminderError) console.error("[createDrive] Reminder insert failed:", reminderError.message);
     }
   }
 
