@@ -121,6 +121,49 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
       ? assignments.map((a: { drive: string; duty: string }) => `• ${a.drive}: ${a.duty}`).join("\n")
       : "";
 
+    // Look up volunteer for logging
+    const normalizedPhone = phone.startsWith("+") ? phone : `+${phone}`;
+    const { data: volunteer } = await supabase
+      .from("volunteers")
+      .select("id")
+      .eq("phone", normalizedPhone)
+      .maybeSingle();
+
+    // Helper: send DM with retry and log to communication_log
+    async function sendWelcomeDm(message: string) {
+      // Small delay after group-add to let WhatsApp propagate
+      await new Promise((r) => setTimeout(r, 2000));
+
+      let sent = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await whatsapp.sendMessage(phone, message);
+          sent = true;
+          break;
+        } catch (err) {
+          logger.warn({ err, phone, attempt }, "Welcome DM send failed, retrying");
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
+        }
+      }
+
+      // Log to communication_log regardless of success
+      if (volunteer?.id) {
+        await supabase.from("communication_log").insert({
+          volunteer_id: volunteer.id,
+          channel: "whatsapp",
+          direction: "outbound",
+          content: sent ? message : `[FAILED] ${message}`,
+          sent_at: sent ? new Date().toISOString() : null,
+        });
+      }
+
+      if (!sent) {
+        logger.error({ phone }, "Welcome DM failed after 3 attempts");
+      }
+
+      return sent;
+    }
+
     if (!added) {
       // Fallback: send invite link via DM
       const code = await whatsapp.getGroupInviteCode(groupJid);
@@ -135,7 +178,7 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
               .replace(/{group_link}/g, link)
           : defaultMsg;
 
-        await whatsapp.sendMessage(phone, message);
+        await sendWelcomeDm(message);
         res.json({ status: "invite_sent", link });
       } else {
         res.json({ status: "failed", error: "Could not add or generate invite" });
@@ -143,7 +186,7 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
       return;
     }
 
-    // Successfully added to group — send welcome DM (no group announcement)
+    // Successfully added to group — send welcome DM
     const defaultDm = `Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive. You have been added to the volunteer group.`;
     const dm = welcomeTemplate
       ? welcomeTemplate
@@ -152,12 +195,7 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
           .replace(/{group_link}/g, "")
       : defaultDm;
 
-    try {
-      await whatsapp.sendMessage(phone, dm);
-    } catch {
-      // Non-critical — volunteer is already in the group
-    }
-
+    await sendWelcomeDm(dm);
     res.json({ status: "added" });
   } catch (error: any) {
     Sentry.captureException(error);

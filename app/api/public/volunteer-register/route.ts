@@ -169,6 +169,7 @@ async function addToWhatsAppGroup(
       assignments,
       welcomeTemplate: whatsappConfig?.welcome_dm_template || "",
     }),
+    signal: AbortSignal.timeout(30000),
   });
 }
 
