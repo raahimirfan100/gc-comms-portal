@@ -23,6 +23,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Table,
   TableBody,
   TableCell,
@@ -45,6 +58,9 @@ import {
   CheckCircle2,
   XCircle,
   Server,
+  Check,
+  ChevronsUpDown,
+  AlertTriangle,
 } from "lucide-react";
 import { SkeletonForm } from "@/components/ui/skeleton-form";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -106,6 +122,7 @@ function QrImage({ data }: { data: string }) {
 export default function WhatsAppSettingsPage() {
   const supabase = createClient();
   const [config, setConfig] = useState<any>(null);
+  const [savedConfig, setSavedConfig] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -115,6 +132,11 @@ export default function WhatsAppSettingsPage() {
     status: string;
     uptime: number;
   } | null>(null);
+
+  // WhatsApp groups state
+  const [groups, setGroups] = useState<{ id: string; subject: string }[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
 
   // Test message state
   const [testPhone, setTestPhone] = useState("");
@@ -134,6 +156,9 @@ export default function WhatsAppSettingsPage() {
     scheduled_at: "",
   });
 
+  // Dirty state tracking
+  const isDirty = config && savedConfig && JSON.stringify(config) !== JSON.stringify(savedConfig);
+
   // ─── Data Loading ────────────────────────────────────────────────────────
 
   const loadSession = useCallback(async () => {
@@ -142,9 +167,11 @@ export default function WhatsAppSettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setSession(data);
-        // Clear connecting spinner once we get a real status
         if (data.status === "qr_pending" || data.status === "connected") {
           setConnecting(false);
+        }
+        if (data.status === "connected" && groups.length === 0) {
+          loadGroups();
         }
       }
     } catch {
@@ -165,12 +192,30 @@ export default function WhatsAppSettingsPage() {
       setLoading(false);
     }
     loadData();
-
-    // Poll for session updates every 3 seconds when waiting for QR or connecting
-    const interval = setInterval(() => loadSession(), 3000);
-
-    return () => clearInterval(interval);
   }, []);
+
+  // Poll for session updates only when connecting or waiting for QR scan
+  useEffect(() => {
+    const shouldPoll =
+      connecting ||
+      session?.status === "qr_pending" ||
+      session?.status === "disconnected";
+    if (!shouldPoll) return;
+
+    const interval = setInterval(() => loadSession(), 3000);
+    return () => clearInterval(interval);
+  }, [connecting, session?.status, loadSession]);
+
+  // Warn on navigation with unsaved changes
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (isDirty) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
 
   async function loadConfig() {
     const { data } = await supabase
@@ -178,7 +223,10 @@ export default function WhatsAppSettingsPage() {
       .select("value")
       .eq("key", "whatsapp")
       .single();
-    if (data?.value) setConfig(data.value);
+    if (data?.value) {
+      setConfig(data.value);
+      setSavedConfig(data.value);
+    }
   }
 
   async function loadServiceHealth() {
@@ -197,7 +245,7 @@ export default function WhatsAppSettingsPage() {
     const { data, error } = await supabase
       .from("scheduled_messages")
       .select("*, drives(name), volunteers(name, phone)")
-      .in("status", ["pending", "sent"])
+      .in("status", ["pending", "sent", "failed"])
       .order("scheduled_at", { ascending: true })
       .limit(50);
     if (!error && data) setScheduledMessages(data as ScheduledMessage[]);
@@ -221,6 +269,21 @@ export default function WhatsAppSettingsPage() {
     if (data) setVolunteers(data);
   }
 
+  async function loadGroups() {
+    setLoadingGroups(true);
+    try {
+      const res = await fetch("/api/whatsapp/groups");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setGroups(data);
+      }
+    } catch {
+      // Groups not available
+    } finally {
+      setLoadingGroups(false);
+    }
+  }
+
   // ─── Connection Actions ──────────────────────────────────────────────────
 
   async function handleConnect() {
@@ -230,8 +293,6 @@ export default function WhatsAppSettingsPage() {
       const data = await res.json();
       if (res.ok) {
         toast.info("Connecting... QR code will appear shortly.");
-        // Keep connecting=true — it will be cleared when session updates
-        // to qr_pending or connected via polling
       } else {
         toast.error(data.error || "Failed to connect");
         setConnecting(false);
@@ -297,8 +358,12 @@ export default function WhatsAppSettingsPage() {
       .update({ value: config })
       .eq("key", "whatsapp");
     setSaving(false);
-    if (error) toast.error(error.message);
-    else toast.success("Settings saved");
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setSavedConfig(config);
+      toast.success("Settings saved");
+    }
   }
 
   // ─── Scheduled Messages ──────────────────────────────────────────────────
@@ -310,9 +375,12 @@ export default function WhatsAppSettingsPage() {
     }
 
     const groupJid = config?.volunteer_group_jid || null;
+    const driveId = newMessage.drive_id && newMessage.drive_id !== "__none__"
+      ? newMessage.drive_id
+      : null;
 
     if (newMessage.target === "group" && !groupJid) {
-      toast.error("No volunteer group JID configured");
+      toast.error("No volunteer group configured");
       return;
     }
 
@@ -321,14 +389,18 @@ export default function WhatsAppSettingsPage() {
       return;
     }
 
+    if (newMessage.target === "all_assigned" && !driveId) {
+      toast.error("Select a drive when targeting all assigned volunteers");
+      return;
+    }
+
     setIsCreating(true);
 
-    if (newMessage.target === "all_assigned" && newMessage.drive_id) {
-      // Create one message per assigned volunteer for the drive
+    if (newMessage.target === "all_assigned" && driveId) {
       const { data: assignments } = await supabase
         .from("assignments")
         .select("volunteer_id")
-        .eq("drive_id", newMessage.drive_id)
+        .eq("drive_id", driveId)
         .in("status", ["assigned", "confirmed"]);
 
       if (!assignments || assignments.length === 0) {
@@ -338,7 +410,7 @@ export default function WhatsAppSettingsPage() {
       }
 
       const rows = assignments.map((a) => ({
-        drive_id: newMessage.drive_id || null,
+        drive_id: driveId,
         volunteer_id: a.volunteer_id,
         channel: "whatsapp",
         message: newMessage.message,
@@ -354,7 +426,7 @@ export default function WhatsAppSettingsPage() {
       }
     } else {
       const row = {
-        drive_id: newMessage.drive_id || null,
+        drive_id: driveId,
         volunteer_id: newMessage.target === "volunteer" ? newMessage.volunteer_id : null,
         group_jid: newMessage.target === "group" ? groupJid : null,
         channel: "whatsapp",
@@ -388,6 +460,11 @@ export default function WhatsAppSettingsPage() {
     }
   }
 
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  const isEnabled = config?.enabled ?? false;
+  const groupName = groups.find((g) => g.id === config?.volunteer_group_jid)?.subject;
+
   // ─── Render ──────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -407,33 +484,56 @@ export default function WhatsAppSettingsPage() {
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">WhatsApp Settings</h1>
         <p className="text-muted-foreground">
-          Manage WhatsApp connection, messaging, and scheduled reminders
+          Manage WhatsApp connection, messaging, and automated reminders
         </p>
       </div>
 
-      {/* ── Service Health ─────────────────────────────────────────────── */}
-      {serviceHealth && (
+      {/* ════════════════════════════════════════════════════════════════════
+          SECTION 1: STATUS
+          ════════════════════════════════════════════════════════════════════ */}
+
+      {/* ── Enable + Service Health ────────────────────────────────────── */}
+      {config && (
         <Card className="stagger-item">
           <CardContent className="flex items-center gap-4 pt-6">
-            <Server className="h-5 w-5 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Railway Service</p>
-              <p className="text-xs text-muted-foreground">
-                Uptime: {Math.floor(serviceHealth.uptime / 60)}m{" "}
-                {Math.floor(serviceHealth.uptime % 60)}s
-              </p>
+            <div className="flex-1 flex items-center gap-4">
+              <div>
+                <Label className="text-base">Enable WhatsApp</Label>
+                <p className="text-sm text-muted-foreground">
+                  Master switch — all messaging, reminders, and group-adds are paused when off
+                </p>
+              </div>
             </div>
-            <Badge variant={serviceHealth.status === "ok" ? "success" : "destructive"}>
-              {serviceHealth.status === "ok" ? "Online" : "Error"}
-            </Badge>
+            <div className="flex items-center gap-3">
+              {serviceHealth && (
+                <Badge variant={serviceHealth.status === "ok" ? "success" : "destructive"} className="gap-1">
+                  <Server className="h-3 w-3" />
+                  {serviceHealth.status === "ok" ? "Online" : "Offline"}
+                </Badge>
+              )}
+              <Switch
+                checked={config.enabled}
+                onCheckedChange={(v) => setConfig({ ...config, enabled: v })}
+              />
+            </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* ── Disabled banner ────────────────────────────────────────────── */}
+      {config && !isEnabled && (
+        <div className="flex items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />
+          <p className="text-sm text-yellow-700 dark:text-yellow-400">
+            WhatsApp is disabled. Enable it above and save to start sending messages.
+          </p>
+        </div>
       )}
 
       {/* ── Connection Status ──────────────────────────────────────────── */}
       <Card className="stagger-item">
         <CardHeader>
-          <CardTitle>Connection Status</CardTitle>
+          <CardTitle>Connection</CardTitle>
           <CardDescription>
             Link your WhatsApp account by scanning the QR code
           </CardDescription>
@@ -528,6 +628,264 @@ export default function WhatsAppSettingsPage() {
         </CardContent>
       </Card>
 
+      {/* ════════════════════════════════════════════════════════════════════
+          SECTION 2: CONFIGURATION
+          ════════════════════════════════════════════════════════════════════ */}
+      {config && (
+        <>
+          {/* ── Volunteer Group ──────────────────────────────────────────── */}
+          <Card className="stagger-item">
+            <CardHeader>
+              <CardTitle>Volunteer Group</CardTitle>
+              <CardDescription>
+                New volunteers are auto-added to this group when they sign up
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {session?.status === "connected" ? (
+                <div className="flex items-end gap-4">
+                  <div className="flex-1 space-y-2">
+                    <Label>WhatsApp Group</Label>
+                    <Popover open={groupPickerOpen} onOpenChange={setGroupPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={groupPickerOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          {config.volunteer_group_jid
+                            ? groupName ?? "Selected group"
+                            : "Select a group..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search groups..." />
+                          <CommandList>
+                            <CommandEmpty>No groups found.</CommandEmpty>
+                            <CommandGroup>
+                              {groups.map((g) => (
+                                <CommandItem
+                                  key={g.id}
+                                  value={g.subject}
+                                  onSelect={() => {
+                                    setConfig({ ...config, volunteer_group_jid: g.id });
+                                    setGroupPickerOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${
+                                      config.volunteer_group_jid === g.id
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    }`}
+                                  />
+                                  {g.subject}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadGroups}
+                    disabled={loadingGroups}
+                  >
+                    {loadingGroups ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    Refresh
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Connect WhatsApp first to select a group
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── Welcome Message ──────────────────────────────────────────── */}
+          <Card className="stagger-item">
+            <CardHeader>
+              <CardTitle>Welcome Message</CardTitle>
+              <CardDescription>
+                Sent as a DM to new volunteers after they sign up, along with a link to join the group
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Message Template</Label>
+                <Textarea
+                  rows={5}
+                  value={config.welcome_dm_template || "Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n{group_link}"}
+                  onChange={(e) =>
+                    setConfig({ ...config, welcome_dm_template: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Variables: {"{name}"}, {"{assignments}"}, {"{group_link}"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Auto Reminders ──────────────────────────────────────────── */}
+          <Card className="stagger-item">
+            <CardHeader>
+              <CardTitle>Auto Reminders</CardTitle>
+              <CardDescription>
+                Automatically remind assigned volunteers about upcoming drives.
+                Sends once daily, then every 12 hours when the drive is tomorrow or today.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base">Enable Auto Reminders</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Applies to all upcoming drives
+                  </p>
+                </div>
+                <Switch
+                  checked={config.auto_reminders_enabled ?? false}
+                  onCheckedChange={(v) =>
+                    setConfig({ ...config, auto_reminders_enabled: v })
+                  }
+                />
+              </div>
+              {config.auto_reminders_enabled && (
+                <div className="space-y-2">
+                  <Label>Reminder Template</Label>
+                  <Textarea
+                    rows={4}
+                    value={config.auto_reminder_template || "Assalam o Alaikum {name}! Reminder: You are assigned to {duty} for {drive_name} at {location}. {days_remaining} day(s) remaining. Please confirm by replying YES."}
+                    onChange={(e) =>
+                      setConfig({ ...config, auto_reminder_template: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Variables: {"{name}"}, {"{duty}"}, {"{drive_name}"}, {"{location}"}, {"{sunset_time}"}, {"{days_remaining}"}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── Keyword Detection ───────────────────────────────────────── */}
+          <Card className="stagger-item">
+            <CardHeader>
+              <CardTitle>Keyword Detection</CardTitle>
+              <CardDescription>
+                When a volunteer replies with one of these words, their assignment is
+                automatically confirmed or cancelled
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Confirm Keywords (comma-separated)</Label>
+                <Input
+                  value={config.confirm_keywords?.join(", ")}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      confirm_keywords: e.target.value
+                        .split(",")
+                        .map((s: string) => s.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  placeholder="confirm, yes, haan, ji"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Cancel Keywords (comma-separated)</Label>
+                <Input
+                  value={config.cancel_keywords?.join(", ")}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      cancel_keywords: e.target.value
+                        .split(",")
+                        .map((s: string) => s.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  placeholder="cancel, no, nahi"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Rate Limiting ───────────────────────────────────────────── */}
+          <Card className="stagger-item">
+            <CardHeader>
+              <CardTitle>Rate Limiting</CardTitle>
+              <CardDescription>
+                Controls how fast messages are sent to avoid WhatsApp throttling.
+                Lower values are safer but slower for bulk sends.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Messages per second</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={config.rate_limit_per_second}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value);
+                      if (!isNaN(v)) setConfig({ ...config, rate_limit_per_second: v });
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Burst limit</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={config.rate_limit_burst}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value);
+                      if (!isNaN(v)) setConfig({ ...config, rate_limit_burst: v });
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Max messages in a quick burst before throttling kicks in
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Save Button ─────────────────────────────────────────────── */}
+          <div className="border-t border-border pt-6 flex items-center gap-4">
+            <Button onClick={save} disabled={saving || !isDirty}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Settings
+            </Button>
+            {isDirty && (
+              <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                You have unsaved changes
+              </p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          SECTION 3: ACTIONS
+          ════════════════════════════════════════════════════════════════════ */}
+
       {/* ── Test Message ─────────────────────────────────────────────── */}
       {session?.status === "connected" && (
         <Card className="stagger-item">
@@ -579,7 +937,7 @@ export default function WhatsAppSettingsPage() {
         <CardHeader>
           <CardTitle>Scheduled Messages</CardTitle>
           <CardDescription>
-            Schedule WhatsApp messages to volunteers or groups
+            Schedule one-off WhatsApp messages to volunteers or groups
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -591,7 +949,14 @@ export default function WhatsAppSettingsPage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Drive (optional)</Label>
+                <Label>
+                  Drive
+                  {newMessage.target === "all_assigned" ? (
+                    <span className="text-destructive"> *</span>
+                  ) : (
+                    <span className="text-muted-foreground font-normal"> (optional)</span>
+                  )}
+                </Label>
                 <Select
                   value={newMessage.drive_id}
                   onValueChange={(v) =>
@@ -602,7 +967,7 @@ export default function WhatsAppSettingsPage() {
                     <SelectValue placeholder="Select a drive" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No drive</SelectItem>
+                    <SelectItem value="__none__">No drive</SelectItem>
                     {drives.map((d) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.name} ({d.drive_date})
@@ -710,13 +1075,13 @@ export default function WhatsAppSettingsPage() {
                         {msg.group_jid ? (
                           <span className="text-muted-foreground">Group</span>
                         ) : msg.volunteers ? (
-                          <span>{msg.volunteers.name}</span>
+                          <span>{(msg.volunteers as any).name}</span>
                         ) : (
                           <span className="text-muted-foreground">--</span>
                         )}
                         {msg.drives && (
                           <p className="text-xs text-muted-foreground">
-                            {msg.drives.name}
+                            {(msg.drives as any).name}
                           </p>
                         )}
                       </TableCell>
@@ -740,7 +1105,7 @@ export default function WhatsAppSettingsPage() {
                         ) : (
                           <Badge variant="destructive" className="gap-1">
                             <XCircle className="h-3 w-3" />
-                            {msg.status}
+                            Failed
                           </Badge>
                         )}
                       </TableCell>
@@ -767,110 +1132,6 @@ export default function WhatsAppSettingsPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* ── WhatsApp Config ────────────────────────────────────────────── */}
-      {config && (
-        <>
-          <Card className="stagger-item">
-            <CardContent className="flex items-center justify-between pt-6">
-              <div>
-                <Label className="text-base">Enable WhatsApp</Label>
-                <p className="text-sm text-muted-foreground">
-                  Send messages via WhatsApp
-                </p>
-              </div>
-              <Switch
-                checked={config.enabled}
-                onCheckedChange={(v) => setConfig({ ...config, enabled: v })}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="stagger-item">
-            <CardHeader>
-              <CardTitle>Rate Limiting</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Messages per second</Label>
-                  <Input
-                    type="number"
-                    value={config.rate_limit_per_second}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        rate_limit_per_second: parseInt(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Burst limit</Label>
-                  <Input
-                    type="number"
-                    value={config.rate_limit_burst}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        rate_limit_burst: parseInt(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="stagger-item">
-            <CardHeader>
-              <CardTitle>Keyword Detection</CardTitle>
-              <CardDescription>
-                Keywords that trigger confirm/cancel actions (comma-separated)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Confirm Keywords</Label>
-                <Input
-                  value={config.confirm_keywords?.join(", ")}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      confirm_keywords: e.target.value
-                        .split(",")
-                        .map((s: string) => s.trim())
-                        .filter(Boolean),
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Cancel Keywords</Label>
-                <Input
-                  value={config.cancel_keywords?.join(", ")}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      cancel_keywords: e.target.value
-                        .split(",")
-                        .map((s: string) => s.trim())
-                        .filter(Boolean),
-                    })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="border-t border-border pt-6">
-            <Button onClick={save} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Settings
-            </Button>
-          </div>
-        </>
-      )}
     </div>
   );
 }
