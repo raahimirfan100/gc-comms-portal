@@ -14,11 +14,13 @@ import {
 import { SkeletonChart } from "@/components/ui/skeleton-chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useCountUp } from "@/lib/hooks/use-count-up";
 import { ProgressRing } from "@/components/analytics/progress-ring";
 import { BarList, type BarListItem } from "@/components/analytics/bar-list";
 import { DonutWithCenter, type DonutItem } from "@/components/analytics/donut-with-center";
 import { AreaMinimal } from "@/components/analytics/area-minimal";
+import { WhatsAppAnalyticsTab } from "@/components/analytics/whatsapp-tab";
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -85,6 +87,7 @@ export default function AnalyticsPage() {
     Array<{ date: string; volunteers: number; drives?: number }>
   >([]);
   const [leaderboard, setLeaderboard] = useState<BarListItem[]>([]);
+  const [driveIds, setDriveIds] = useState<string[]>([]);
 
   const countVolunteers = useCountUp(stats.totalVolunteers);
   const countDrives = useCountUp(stats.totalDrives);
@@ -119,6 +122,7 @@ export default function AnalyticsPage() {
       .eq("season_id", activeSeason.id);
     const allDrives = driveIdsRes.data ?? [];
     const driveIds = allDrives.map((d) => d.id);
+    setDriveIds(driveIds);
 
     const [volRes, assignRes, driveDutiesRes, reminderRes] = await Promise.all([
       supabase.from("volunteers").select("id", { count: "exact" }).eq("is_active", true),
@@ -344,6 +348,13 @@ export default function AnalyticsPage() {
         )}
       </div>
 
+      <Tabs defaultValue="overview">
+        <TabsList className="mb-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
       <div
         className="grid grid-cols-2 md:grid-cols-4 gap-3 grid-flow-dense auto-rows-[minmax(0,auto)]"
         role="region"
@@ -531,6 +542,12 @@ export default function AnalyticsPage() {
           </Card>
         )}
       </div>
+        </TabsContent>
+
+        <TabsContent value="whatsapp">
+          <WhatsAppAnalyticsTab driveIds={driveIds} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
