@@ -151,13 +151,21 @@ export class WhatsAppManager {
     ]);
   }
 
-  async addToGroup(phone: string, groupJid: string): Promise<{ added: boolean }> {
+  async addToGroup(phone: string, groupJid: string): Promise<{ added: boolean; status?: number }> {
     if (!this.sock) throw new Error("WhatsApp not connected");
     const jid = phone.replace("+", "") + "@s.whatsapp.net";
     try {
-      await this.sock.groupParticipantsUpdate(groupJid, [jid], "add");
-      return { added: true };
-    } catch {
+      const result = await this.sock.groupParticipantsUpdate(groupJid, [jid], "add");
+      const entry = Array.isArray(result) ? result[0] : undefined;
+      const status = entry?.status ?? entry?.content?.attrs?.code;
+      const statusNum = typeof status === "string" ? parseInt(status) : status;
+      const added = statusNum === 200;
+      if (!added) {
+        whatsappLogger.warn({ phone, groupJid, status: statusNum }, "Group add not successful");
+      }
+      return { added, status: statusNum };
+    } catch (err) {
+      whatsappLogger.error({ err, phone, groupJid }, "Group add threw error");
       return { added: false };
     }
   }
