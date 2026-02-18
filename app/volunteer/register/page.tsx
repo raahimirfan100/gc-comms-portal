@@ -258,6 +258,18 @@ export default function VolunteerRegisterPage() {
                     <p className="font-medium">
                       Fill out the form below to sign up as a volunteer!
                     </p>
+                    <p className="text-muted-foreground">
+                      For any queries, feel free to contact us at{" "}
+                      <a
+                        href="https://wa.me/923342842585"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary underline underline-offset-2"
+                      >
+                        0334 2842585
+                      </a>{" "}
+                      (Muhammad Moosa Hashim)
+                    </p>
                   </div>
 
                   <form onSubmit={handlePhoneContinue} className="space-y-4">
