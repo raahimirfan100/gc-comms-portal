@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normalizePhone } from "@/lib/utils";
 import * as Sentry from "@sentry/nextjs";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -18,8 +17,6 @@ export async function GET(request: NextRequest) {
   const limited = rateLimit(request, 30, 60_000);
   if (limited) return limited;
   try {
-    const { searchParams } = new URL(request.url);
-    const phoneRaw = searchParams.get("phone");
     const supabase = createAdminClient();
 
     const { data: configRow } = await supabase
@@ -39,11 +36,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (!season) {
-      return NextResponse.json({
-        drives: [],
-        volunteer: null,
-        existingDriveIds: [],
-      });
+      return NextResponse.json({ drives: [] });
     }
 
     const today = new Date().toISOString().slice(0, 10);
@@ -77,50 +70,7 @@ export async function GET(request: NextRequest) {
       drives = drives.slice(0, windowConfig.drive_count);
     }
 
-    const driveIds = drives.map((d) => d.id);
-
-    if (!phoneRaw || driveIds.length === 0) {
-      return NextResponse.json({
-        drives,
-        volunteer: null,
-        existingDriveIds: [],
-      });
-    }
-
-    const phone = normalizePhone(phoneRaw);
-    const { data: volunteer } = await supabase
-      .from("volunteers")
-      .select("id, name, email, gender, organization")
-      .eq("phone", phone)
-      .single();
-
-    if (!volunteer) {
-      return NextResponse.json({
-        drives,
-        volunteer: null,
-        existingDriveIds: [],
-      });
-    }
-
-    const { data: availability } = await supabase
-      .from("volunteer_availability")
-      .select("drive_id")
-      .eq("volunteer_id", volunteer.id)
-      .in("drive_id", driveIds);
-
-    const existingDriveIds =
-      availability?.map((a) => a.drive_id) ?? [];
-
-    return NextResponse.json({
-      drives,
-      volunteer: {
-        name: volunteer.name,
-        email: volunteer.email ?? null,
-        gender: volunteer.gender,
-        organization: volunteer.organization ?? null,
-      },
-      existingDriveIds,
-    });
+    return NextResponse.json({ drives });
   } catch (err) {
     Sentry.captureException(err);
     console.error("[signup-context]", err);
