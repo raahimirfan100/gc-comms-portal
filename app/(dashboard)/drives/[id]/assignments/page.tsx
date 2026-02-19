@@ -32,6 +32,8 @@ import {
   Copy,
   UserX,
   AlertTriangle,
+  Search,
+  UserPlus,
 } from "lucide-react";
 import {
   DndContext,
@@ -51,9 +53,17 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
+import { cn, normalizePhone } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonKanbanColumn } from "@/components/ui/skeleton-kanban";
+import { CountryCodePicker } from "@/components/ui/country-code-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -80,7 +90,31 @@ type DriveDuty = {
   duties: { name: string; slug: string; gender_restriction: string | null; display_order?: number } | null;
 };
 
+type VolunteerSearchResult = {
+  id: string;
+  name: string;
+  phone: string;
+  gender: "male" | "female" | null;
+  email: string | null;
+  organization: string | null;
+};
+
+type NewVolunteerFormState = {
+  name: string;
+  phone: string;
+  gender: "male" | "female";
+  email: string;
+  organization: string;
+};
+
 const DUTY_COLUMN_MIN_WIDTH_PX = 260;
+const NEW_VOLUNTEER_DEFAULT: NewVolunteerFormState = {
+  name: "",
+  phone: "",
+  gender: "male",
+  email: "",
+  organization: "",
+};
 
 function truncateVolunteerName(
   name: string | null | undefined
@@ -223,6 +257,19 @@ export default function AssignmentsPage() {
   const [capacityInputs, setCapacityInputs] = useState<Record<string, string>>({});
   const [savingCapacity, setSavingCapacity] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [addVolunteerModalOpen, setAddVolunteerModalOpen] = useState(false);
+  const [addVolunteerMode, setAddVolunteerMode] = useState<"existing" | "new">("existing");
+  const [existingVolunteerQuery, setExistingVolunteerQuery] = useState("");
+  const [existingVolunteerResults, setExistingVolunteerResults] = useState<
+    VolunteerSearchResult[]
+  >([]);
+  const [selectedVolunteerId, setSelectedVolunteerId] = useState("");
+  const [searchingVolunteers, setSearchingVolunteers] = useState(false);
+  const [savingVolunteer, setSavingVolunteer] = useState(false);
+  const [newVolunteerCountryCode, setNewVolunteerCountryCode] = useState("+92");
+  const [newVolunteerForm, setNewVolunteerForm] = useState<NewVolunteerFormState>(
+    NEW_VOLUNTEER_DEFAULT,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -285,6 +332,141 @@ export default function AssignmentsPage() {
       await loadData();
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  function resetAddVolunteerModal() {
+    setAddVolunteerMode("existing");
+    setExistingVolunteerQuery("");
+    setExistingVolunteerResults([]);
+    setSelectedVolunteerId("");
+    setSearchingVolunteers(false);
+    setSavingVolunteer(false);
+    setNewVolunteerCountryCode("+92");
+    setNewVolunteerForm(NEW_VOLUNTEER_DEFAULT);
+  }
+
+  async function searchExistingVolunteers(query: string) {
+    setSearchingVolunteers(true);
+
+    const cleanedQuery = query
+      .trim()
+      .replace(/[%_(),']/g, "");
+
+    let volunteersQuery = supabase
+      .from("volunteers")
+      .select("id, name, phone, gender, email, organization")
+      .order("updated_at", { ascending: false })
+      .limit(20);
+
+    if (cleanedQuery.length > 0) {
+      volunteersQuery = volunteersQuery.or(
+        `name.ilike.%${cleanedQuery}%,phone.ilike.%${cleanedQuery}%`,
+      );
+    }
+
+    const { data, error } = await volunteersQuery;
+    setSearchingVolunteers(false);
+
+    if (error) {
+      toast.error(`Failed to load volunteers: ${error.message}`);
+      return;
+    }
+
+    const rows = (data ?? []) as VolunteerSearchResult[];
+    setExistingVolunteerResults(rows);
+    if (rows.length > 0 && !rows.some((v) => v.id === selectedVolunteerId)) {
+      setSelectedVolunteerId(rows[0].id);
+    }
+  }
+
+  function openAddVolunteerModal() {
+    resetAddVolunteerModal();
+    setAddVolunteerModalOpen(true);
+    void searchExistingVolunteers("");
+  }
+
+  async function handleSearchExistingVolunteers(
+    e?: React.FormEvent<HTMLFormElement>,
+  ) {
+    e?.preventDefault();
+    await searchExistingVolunteers(existingVolunteerQuery);
+  }
+
+  async function handleAddVolunteerToDrive() {
+    setSavingVolunteer(true);
+    try {
+      let payload:
+        | {
+            driveId: string;
+            mode: "existing";
+            volunteerId: string;
+          }
+        | {
+            driveId: string;
+            mode: "new";
+            name: string;
+            phone: string;
+            gender: "male" | "female";
+            email: string | null;
+            organization: string | null;
+          };
+
+      if (addVolunteerMode === "existing") {
+        if (!selectedVolunteerId) {
+          toast.error("Select a volunteer first");
+          return;
+        }
+
+        payload = {
+          driveId,
+          mode: "existing",
+          volunteerId: selectedVolunteerId,
+        };
+      } else {
+        const name = newVolunteerForm.name.trim();
+        const phone = newVolunteerForm.phone.trim();
+
+        if (!name || !phone) {
+          toast.error("Name and phone are required");
+          return;
+        }
+
+        payload = {
+          driveId,
+          mode: "new",
+          name,
+          phone: normalizePhone(phone, newVolunteerCountryCode),
+          gender: newVolunteerForm.gender,
+          email: newVolunteerForm.email.trim() || null,
+          organization: newVolunteerForm.organization.trim() || null,
+        };
+      }
+
+      const res = await fetch("/api/assignments/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (data?.code === "ALREADY_REGISTERED") {
+          toast.info(data?.error ?? "Volunteer is already registered");
+          return;
+        }
+        toast.error(data?.error ?? "Failed to add volunteer");
+        return;
+      }
+
+      toast.success(data?.message ?? "Volunteer added to drive");
+      setAddVolunteerModalOpen(false);
+      resetAddVolunteerModal();
+      await loadData();
+    } catch {
+      toast.error("Failed to add volunteer");
+    } finally {
+      setSavingVolunteer(false);
     }
   }
 
@@ -528,6 +710,8 @@ export default function AssignmentsPage() {
   const activeAssignment = activeId
     ? assignments.find((a) => a.id === activeId)
     : null;
+  const selectedExistingVolunteer =
+    existingVolunteerResults.find((v) => v.id === selectedVolunteerId) ?? null;
 
   if (loading) {
     return (
@@ -560,6 +744,10 @@ export default function AssignmentsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Duty Board</h1>
         <div className="flex flex-wrap gap-2">
+          <Button onClick={openAddVolunteerModal} variant="outline">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add Volunteer
+          </Button>
           <Button onClick={openCapacityModal} variant="outline">
             <Settings className="mr-2 h-4 w-4" />
             Edit Capacities
@@ -815,6 +1003,237 @@ export default function AssignmentsPage() {
             document.body
           )}
       </DndContext>
+
+      <Dialog
+        open={addVolunteerModalOpen}
+        onOpenChange={(open) => {
+          setAddVolunteerModalOpen(open);
+          if (!open) {
+            resetAddVolunteerModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Add Volunteer to This Drive</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 rounded-md border p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={addVolunteerMode === "existing" ? "default" : "ghost"}
+                onClick={() => setAddVolunteerMode("existing")}
+              >
+                Choose Existing
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={addVolunteerMode === "new" ? "default" : "ghost"}
+                onClick={() => setAddVolunteerMode("new")}
+              >
+                Create New
+              </Button>
+            </div>
+
+            {addVolunteerMode === "existing" ? (
+              <div className="space-y-3">
+                <form
+                  onSubmit={handleSearchExistingVolunteers}
+                  className="flex gap-2"
+                >
+                  <Input
+                    value={existingVolunteerQuery}
+                    onChange={(e) => setExistingVolunteerQuery(e.target.value)}
+                    placeholder="Search by name or phone"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={searchingVolunteers}
+                  >
+                    {searchingVolunteers ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </form>
+
+                <div className="max-h-72 overflow-y-auto rounded-md border">
+                  {searchingVolunteers ? (
+                    <div className="flex items-center justify-center p-6 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading volunteers
+                    </div>
+                  ) : existingVolunteerResults.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">
+                      No volunteers found
+                    </p>
+                  ) : (
+                    <div className="divide-y">
+                      {existingVolunteerResults.map((volunteer) => (
+                        <button
+                          type="button"
+                          key={volunteer.id}
+                          className={cn(
+                            "w-full p-3 text-left transition-colors hover:bg-muted/40",
+                            selectedVolunteerId === volunteer.id && "bg-primary/10",
+                          )}
+                          onClick={() => setSelectedVolunteerId(volunteer.id)}
+                        >
+                          <p className="text-sm font-medium text-foreground">
+                            {volunteer.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {volunteer.phone}
+                            {volunteer.organization
+                              ? ` • ${volunteer.organization}`
+                              : ""}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {selectedExistingVolunteer && (
+                  <p className="text-xs text-muted-foreground">
+                    Selected: {selectedExistingVolunteer.name} (
+                    {selectedExistingVolunteer.phone})
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-sm font-medium" htmlFor="manual_name">
+                    Full Name
+                  </label>
+                  <Input
+                    id="manual_name"
+                    value={newVolunteerForm.name}
+                    onChange={(e) =>
+                      setNewVolunteerForm((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    placeholder="Volunteer name"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-sm font-medium" htmlFor="manual_phone">
+                    Phone
+                  </label>
+                  <div className="flex gap-2">
+                    <CountryCodePicker
+                      value={newVolunteerCountryCode}
+                      onChange={setNewVolunteerCountryCode}
+                      className="w-[132px]"
+                    />
+                    <Input
+                      id="manual_phone"
+                      value={newVolunteerForm.phone}
+                      onChange={(e) =>
+                        setNewVolunteerForm((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
+                      }
+                      placeholder="3XX XXXXXXX"
+                      className="min-w-[220px] flex-1"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Gender</label>
+                  <Select
+                    value={newVolunteerForm.gender}
+                    onValueChange={(value) =>
+                      setNewVolunteerForm((prev) => ({
+                        ...prev,
+                        gender: value as "male" | "female",
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="manual_email">
+                    Email (optional)
+                  </label>
+                  <Input
+                    id="manual_email"
+                    type="email"
+                    value={newVolunteerForm.email}
+                    onChange={(e) =>
+                      setNewVolunteerForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    placeholder="name@example.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="manual_org">
+                    School / Company (optional)
+                  </label>
+                  <Input
+                    id="manual_org"
+                    value={newVolunteerForm.organization}
+                    onChange={(e) =>
+                      setNewVolunteerForm((prev) => ({
+                        ...prev,
+                        organization: e.target.value,
+                      }))
+                    }
+                    placeholder="School or company"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAddVolunteerModalOpen(false);
+                resetAddVolunteerModal();
+              }}
+              disabled={savingVolunteer}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddVolunteerToDrive}
+              disabled={
+                savingVolunteer ||
+                (addVolunteerMode === "existing" && !selectedVolunteerId)
+              }
+            >
+              {savingVolunteer && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Add to Drive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={capacityModalOpen}
