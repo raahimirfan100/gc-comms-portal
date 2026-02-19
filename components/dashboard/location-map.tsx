@@ -171,7 +171,7 @@ export function LocationMap({
     <>
       <Script
         id="google-maps-js"
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&language=en`}
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&language=en&loading=async`}
         strategy="afterInteractive"
         onLoad={() => setScriptLoaded(true)}
       />
