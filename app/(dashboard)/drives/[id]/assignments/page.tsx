@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -27,15 +26,14 @@ import {
   Loader2,
   Wand2,
   RefreshCw,
-  Users,
   GripVertical,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   PhoneCall,
   Copy,
   UserX,
   AlertTriangle,
+  Search,
+  UserPlus,
 } from "lucide-react";
 import {
   DndContext,
@@ -55,9 +53,17 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn, getStatusBadgeVariant } from "@/lib/utils";
+import { cn, normalizePhone } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonKanbanColumn } from "@/components/ui/skeleton-kanban";
+import { CountryCodePicker } from "@/components/ui/country-code-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -84,14 +90,38 @@ type DriveDuty = {
   duties: { name: string; slug: string; gender_restriction: string | null; display_order?: number } | null;
 };
 
-const VOLUNTEER_NAME_MAX_LENGTH = 12;
+type VolunteerSearchResult = {
+  id: string;
+  name: string;
+  phone: string;
+  gender: "male" | "female" | null;
+  email: string | null;
+  organization: string | null;
+};
+
+type NewVolunteerFormState = {
+  name: string;
+  phone: string;
+  gender: "male" | "female";
+  email: string;
+  organization: string;
+};
+
+const DUTY_COLUMN_MIN_WIDTH_PX = 260;
+const NEW_VOLUNTEER_DEFAULT: NewVolunteerFormState = {
+  name: "",
+  phone: "",
+  gender: "male",
+  email: "",
+  organization: "",
+};
 
 function truncateVolunteerName(
-  name: string | null | undefined,
-  maxLen = VOLUNTEER_NAME_MAX_LENGTH
+  name: string | null | undefined
 ): string {
   const n = name ?? "—";
-  return n.length <= maxLen ? n : `${n.slice(0, maxLen)}...`;
+  // Let CSS truncation decide based on available column width.
+  return n;
 }
 
 function DroppableColumn({
@@ -148,7 +178,7 @@ function VolunteerCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-md border border-border/80 bg-card px-2 py-1.5 text-sm"
+      className="flex items-center gap-2 rounded-md border border-border/80 bg-card px-2 py-1.5 text-xs"
     >
       <button
         {...attributes}
@@ -158,31 +188,13 @@ function VolunteerCard({
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
-      <div className="min-w-0 flex-1 flex items-center gap-2 flex-nowrap overflow-hidden">
+      <div className="min-w-0 flex-1 flex items-center gap-2 flex-nowrap">
         <span
-          className="min-w-0 max-w-[10rem] flex-1 truncate font-medium text-foreground"
+          className="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
           title={v?.name ?? undefined}
         >
           {truncateVolunteerName(v?.name)}
         </span>
-        {assignment.is_manual_override && (
-          <Badge variant="outline" className="shrink-0 text-[10px] px-1 py-0">
-            manual
-          </Badge>
-        )}
-        {genderLetter && (
-          <Badge
-            variant="outline"
-            className={cn(
-              "shrink-0 text-[10px] px-1 py-0 font-medium",
-              genderLetter === "M"
-                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
-                : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
-            )}
-          >
-            {genderLetter}
-          </Badge>
-        )}
         {phone && (
           <TooltipProvider delayDuration={200}>
             <Tooltip>
@@ -191,7 +203,7 @@ function VolunteerCard({
                   href={`tel:${phone.replace(/\s/g, "")}`}
                   title={phone}
                   onClick={(e) => e.stopPropagation()}
-                  className="ml-auto shrink-0 flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="shrink-0 flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                   aria-label={`Call ${v?.name ?? "volunteer"}`}
                 >
                   <PhoneCall className="h-3.5 w-3.5" />
@@ -210,6 +222,19 @@ function VolunteerCard({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+        )}
+        {genderLetter && (
+          <Badge
+            variant="outline"
+            className={cn(
+              "shrink-0 text-[10px] px-1 py-0 font-medium",
+              genderLetter === "M"
+                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+            )}
+          >
+            {genderLetter}
+          </Badge>
         )}
       </div>
     </div>
@@ -232,49 +257,19 @@ export default function AssignmentsPage() {
   const [capacityInputs, setCapacityInputs] = useState<Record<string, string>>({});
   const [savingCapacity, setSavingCapacity] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const checkScrollability = () => {
-    if (!scrollRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    const atStart = scrollLeft <= 1;
-    const atEnd = scrollLeft >= scrollWidth - clientWidth - 1;
-    setCanScrollLeft(!atStart);
-    setCanScrollRight(!atEnd);
-  };
-
-  useEffect(() => {
-    const scrollElement = scrollRef.current;
-    if (!scrollElement) return;
-    scrollElement.scrollLeft = 0;
-    checkScrollability();
-    let scrollEndTimer: ReturnType<typeof setTimeout>;
-    const onScroll = () => {
-      checkScrollability();
-      clearTimeout(scrollEndTimer);
-      scrollEndTimer = setTimeout(checkScrollability, 120);
-    };
-    scrollElement.addEventListener("scroll", onScroll);
-    const resizeObserver = new ResizeObserver(() => checkScrollability());
-    resizeObserver.observe(scrollElement);
-    return () => {
-      clearTimeout(scrollEndTimer);
-      scrollElement.removeEventListener("scroll", onScroll);
-      resizeObserver.disconnect();
-    };
-  }, [driveDuties.length]);
-
-  const scrollBoard = (direction: "left" | "right") => {
-    if (!scrollRef.current) return;
-    const scrollAmount = scrollRef.current.clientWidth * 0.8;
-    scrollRef.current.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-  };
+  const [addVolunteerModalOpen, setAddVolunteerModalOpen] = useState(false);
+  const [addVolunteerMode, setAddVolunteerMode] = useState<"existing" | "new">("existing");
+  const [existingVolunteerQuery, setExistingVolunteerQuery] = useState("");
+  const [existingVolunteerResults, setExistingVolunteerResults] = useState<
+    VolunteerSearchResult[]
+  >([]);
+  const [selectedVolunteerId, setSelectedVolunteerId] = useState("");
+  const [searchingVolunteers, setSearchingVolunteers] = useState(false);
+  const [savingVolunteer, setSavingVolunteer] = useState(false);
+  const [newVolunteerCountryCode, setNewVolunteerCountryCode] = useState("+92");
+  const [newVolunteerForm, setNewVolunteerForm] = useState<NewVolunteerFormState>(
+    NEW_VOLUNTEER_DEFAULT,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -340,6 +335,141 @@ export default function AssignmentsPage() {
     }
   }
 
+  function resetAddVolunteerModal() {
+    setAddVolunteerMode("existing");
+    setExistingVolunteerQuery("");
+    setExistingVolunteerResults([]);
+    setSelectedVolunteerId("");
+    setSearchingVolunteers(false);
+    setSavingVolunteer(false);
+    setNewVolunteerCountryCode("+92");
+    setNewVolunteerForm(NEW_VOLUNTEER_DEFAULT);
+  }
+
+  async function searchExistingVolunteers(query: string) {
+    setSearchingVolunteers(true);
+
+    const cleanedQuery = query
+      .trim()
+      .replace(/[%_(),']/g, "");
+
+    let volunteersQuery = supabase
+      .from("volunteers")
+      .select("id, name, phone, gender, email, organization")
+      .order("updated_at", { ascending: false })
+      .limit(20);
+
+    if (cleanedQuery.length > 0) {
+      volunteersQuery = volunteersQuery.or(
+        `name.ilike.%${cleanedQuery}%,phone.ilike.%${cleanedQuery}%`,
+      );
+    }
+
+    const { data, error } = await volunteersQuery;
+    setSearchingVolunteers(false);
+
+    if (error) {
+      toast.error(`Failed to load volunteers: ${error.message}`);
+      return;
+    }
+
+    const rows = (data ?? []) as VolunteerSearchResult[];
+    setExistingVolunteerResults(rows);
+    if (rows.length > 0 && !rows.some((v) => v.id === selectedVolunteerId)) {
+      setSelectedVolunteerId(rows[0].id);
+    }
+  }
+
+  function openAddVolunteerModal() {
+    resetAddVolunteerModal();
+    setAddVolunteerModalOpen(true);
+    void searchExistingVolunteers("");
+  }
+
+  async function handleSearchExistingVolunteers(
+    e?: React.FormEvent<HTMLFormElement>,
+  ) {
+    e?.preventDefault();
+    await searchExistingVolunteers(existingVolunteerQuery);
+  }
+
+  async function handleAddVolunteerToDrive() {
+    setSavingVolunteer(true);
+    try {
+      let payload:
+        | {
+            driveId: string;
+            mode: "existing";
+            volunteerId: string;
+          }
+        | {
+            driveId: string;
+            mode: "new";
+            name: string;
+            phone: string;
+            gender: "male" | "female";
+            email: string | null;
+            organization: string | null;
+          };
+
+      if (addVolunteerMode === "existing") {
+        if (!selectedVolunteerId) {
+          toast.error("Select a volunteer first");
+          return;
+        }
+
+        payload = {
+          driveId,
+          mode: "existing",
+          volunteerId: selectedVolunteerId,
+        };
+      } else {
+        const name = newVolunteerForm.name.trim();
+        const phone = newVolunteerForm.phone.trim();
+
+        if (!name || !phone) {
+          toast.error("Name and phone are required");
+          return;
+        }
+
+        payload = {
+          driveId,
+          mode: "new",
+          name,
+          phone: normalizePhone(phone, newVolunteerCountryCode),
+          gender: newVolunteerForm.gender,
+          email: newVolunteerForm.email.trim() || null,
+          organization: newVolunteerForm.organization.trim() || null,
+        };
+      }
+
+      const res = await fetch("/api/assignments/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (data?.code === "ALREADY_REGISTERED") {
+          toast.info(data?.error ?? "Volunteer is already registered");
+          return;
+        }
+        toast.error(data?.error ?? "Failed to add volunteer");
+        return;
+      }
+
+      toast.success(data?.message ?? "Volunteer added to drive");
+      setAddVolunteerModalOpen(false);
+      resetAddVolunteerModal();
+      await loadData();
+    } catch {
+      toast.error("Failed to add volunteer");
+    } finally {
+      setSavingVolunteer(false);
+    }
+  }
+
   async function handleAutoAssign() {
     setAssigning(true);
     try {
@@ -367,7 +497,7 @@ export default function AssignmentsPage() {
         );
       }
       loadData();
-    } catch (e) {
+    } catch {
       toast.error("Auto-assign failed. Try again.");
     } finally {
       setAssigning(false);
@@ -580,6 +710,8 @@ export default function AssignmentsPage() {
   const activeAssignment = activeId
     ? assignments.find((a) => a.id === activeId)
     : null;
+  const selectedExistingVolunteer =
+    existingVolunteerResults.find((v) => v.id === selectedVolunteerId) ?? null;
 
   if (loading) {
     return (
@@ -591,14 +723,17 @@ export default function AssignmentsPage() {
             <Skeleton className="h-10 w-24" />
           </div>
         </div>
-        <div className="overflow-x-auto pb-2 scrollbar-hide">
-          <div className="flex gap-4 min-w-0" style={{ width: "max-content" }}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="shrink-0 w-80 min-w-80">
-                <SkeletonKanbanColumn />
-              </div>
-            ))}
-          </div>
+        <div
+          className="grid gap-4 pb-2"
+          style={{
+            gridTemplateColumns: `repeat(auto-fit, minmax(${DUTY_COLUMN_MIN_WIDTH_PX}px, 1fr))`,
+          }}
+        >
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="min-w-0">
+              <SkeletonKanbanColumn />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -607,40 +742,12 @@ export default function AssignmentsPage() {
   return (
     <div className="space-y-4 page-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Duty Board</h1>
-          {(canScrollLeft || canScrollRight) && (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => scrollBoard("left")}
-                disabled={!canScrollLeft}
-                className={`flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
-                  canScrollLeft
-                    ? "border-border bg-background hover:bg-accent cursor-pointer"
-                    : "border-border/50 bg-background/50 cursor-not-allowed opacity-50"
-                }`}
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollBoard("right")}
-                disabled={!canScrollRight}
-                className={`flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
-                  canScrollRight
-                    ? "border-border bg-background hover:bg-accent cursor-pointer"
-                    : "border-border/50 bg-background/50 cursor-not-allowed opacity-50"
-                }`}
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold">Duty Board</h1>
         <div className="flex flex-wrap gap-2">
+          <Button onClick={openAddVolunteerModal} variant="outline">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add Volunteer
+          </Button>
           <Button onClick={openCapacityModal} variant="outline">
             <Settings className="mr-2 h-4 w-4" />
             Edit Capacities
@@ -676,22 +783,13 @@ export default function AssignmentsPage() {
         onDragEnd={handleDragEnd}
       >
         <div
-          ref={scrollRef}
-          className="overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide snap-x snap-mandatory"
-          onWheel={(e) => {
-            if (e.shiftKey && scrollRef.current) {
-              e.preventDefault();
-              scrollRef.current.scrollLeft += e.deltaY;
-              checkScrollability();
-            }
+          className="grid gap-4 pb-2"
+          style={{
+            gridTemplateColumns: `repeat(auto-fit, minmax(${DUTY_COLUMN_MIN_WIDTH_PX}px, 1fr))`,
           }}
         >
-          <div
-            className="flex gap-4 min-w-0"
-            style={{ width: "max-content" }}
-          >
           {/* Unassigned column */}
-          <DroppableColumn id="unassigned" className="shrink-0 w-80 min-w-80 snap-start [scroll-snap-stop:always]">
+          <DroppableColumn id="unassigned" className="min-w-0">
             {(isOver) => (
           <Card
             className={cn(
@@ -762,7 +860,7 @@ export default function AssignmentsPage() {
               dutyAssignments.length > capacity;
 
             return (
-              <DroppableColumn key={dd.duty_id} id={dd.duty_id} className="shrink-0 w-80 min-w-80 snap-start [scroll-snap-stop:always]">
+              <DroppableColumn key={dd.duty_id} id={dd.duty_id} className="min-w-0">
                 {(isOver) => (
               <Card
                 className={cn(
@@ -857,7 +955,6 @@ export default function AssignmentsPage() {
               </DroppableColumn>
             );
           })}
-          </div>
         </div>
 
         {typeof document !== "undefined" &&
@@ -877,14 +974,9 @@ export default function AssignmentsPage() {
                       <GripVertical className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1 flex items-center gap-2 flex-nowrap overflow-hidden">
-                      <span className="min-w-0 max-w-[10rem] flex-1 truncate font-medium text-foreground">
+                      <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                         {truncateVolunteerName(v?.name)}
                       </span>
-                      {activeAssignment.is_manual_override && (
-                        <Badge variant="outline" className="shrink-0 text-[10px] px-1 py-0">
-                          manual
-                        </Badge>
-                      )}
                       {genderLetter && (
                         <Badge
                           variant="outline"
@@ -911,6 +1003,237 @@ export default function AssignmentsPage() {
             document.body
           )}
       </DndContext>
+
+      <Dialog
+        open={addVolunteerModalOpen}
+        onOpenChange={(open) => {
+          setAddVolunteerModalOpen(open);
+          if (!open) {
+            resetAddVolunteerModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Add Volunteer to This Drive</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 rounded-md border p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={addVolunteerMode === "existing" ? "default" : "ghost"}
+                onClick={() => setAddVolunteerMode("existing")}
+              >
+                Choose Existing
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={addVolunteerMode === "new" ? "default" : "ghost"}
+                onClick={() => setAddVolunteerMode("new")}
+              >
+                Create New
+              </Button>
+            </div>
+
+            {addVolunteerMode === "existing" ? (
+              <div className="space-y-3">
+                <form
+                  onSubmit={handleSearchExistingVolunteers}
+                  className="flex gap-2"
+                >
+                  <Input
+                    value={existingVolunteerQuery}
+                    onChange={(e) => setExistingVolunteerQuery(e.target.value)}
+                    placeholder="Search by name or phone"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={searchingVolunteers}
+                  >
+                    {searchingVolunteers ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </form>
+
+                <div className="max-h-72 overflow-y-auto rounded-md border">
+                  {searchingVolunteers ? (
+                    <div className="flex items-center justify-center p-6 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading volunteers
+                    </div>
+                  ) : existingVolunteerResults.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">
+                      No volunteers found
+                    </p>
+                  ) : (
+                    <div className="divide-y">
+                      {existingVolunteerResults.map((volunteer) => (
+                        <button
+                          type="button"
+                          key={volunteer.id}
+                          className={cn(
+                            "w-full p-3 text-left transition-colors hover:bg-muted/40",
+                            selectedVolunteerId === volunteer.id && "bg-primary/10",
+                          )}
+                          onClick={() => setSelectedVolunteerId(volunteer.id)}
+                        >
+                          <p className="text-sm font-medium text-foreground">
+                            {volunteer.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {volunteer.phone}
+                            {volunteer.organization
+                              ? ` • ${volunteer.organization}`
+                              : ""}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {selectedExistingVolunteer && (
+                  <p className="text-xs text-muted-foreground">
+                    Selected: {selectedExistingVolunteer.name} (
+                    {selectedExistingVolunteer.phone})
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-sm font-medium" htmlFor="manual_name">
+                    Full Name
+                  </label>
+                  <Input
+                    id="manual_name"
+                    value={newVolunteerForm.name}
+                    onChange={(e) =>
+                      setNewVolunteerForm((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    placeholder="Volunteer name"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-sm font-medium" htmlFor="manual_phone">
+                    Phone
+                  </label>
+                  <div className="flex gap-2">
+                    <CountryCodePicker
+                      value={newVolunteerCountryCode}
+                      onChange={setNewVolunteerCountryCode}
+                      className="w-[132px]"
+                    />
+                    <Input
+                      id="manual_phone"
+                      value={newVolunteerForm.phone}
+                      onChange={(e) =>
+                        setNewVolunteerForm((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
+                      }
+                      placeholder="3XX XXXXXXX"
+                      className="min-w-[220px] flex-1"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Gender</label>
+                  <Select
+                    value={newVolunteerForm.gender}
+                    onValueChange={(value) =>
+                      setNewVolunteerForm((prev) => ({
+                        ...prev,
+                        gender: value as "male" | "female",
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="manual_email">
+                    Email (optional)
+                  </label>
+                  <Input
+                    id="manual_email"
+                    type="email"
+                    value={newVolunteerForm.email}
+                    onChange={(e) =>
+                      setNewVolunteerForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    placeholder="name@example.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="manual_org">
+                    School / Company (optional)
+                  </label>
+                  <Input
+                    id="manual_org"
+                    value={newVolunteerForm.organization}
+                    onChange={(e) =>
+                      setNewVolunteerForm((prev) => ({
+                        ...prev,
+                        organization: e.target.value,
+                      }))
+                    }
+                    placeholder="School or company"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAddVolunteerModalOpen(false);
+                resetAddVolunteerModal();
+              }}
+              disabled={savingVolunteer}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddVolunteerToDrive}
+              disabled={
+                savingVolunteer ||
+                (addVolunteerMode === "existing" && !selectedVolunteerId)
+              }
+            >
+              {savingVolunteer && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Add to Drive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={capacityModalOpen}
