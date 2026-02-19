@@ -45,7 +45,8 @@ export class WhatsAppManager {
       const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } =
         await import("baileys");
 
-      const { state, saveCreds } = await useMultiFileAuthState("./auth_state");
+      const authDir = process.env.AUTH_STATE_DIR || "./auth_state";
+      const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
       // Silence Baileys internal logs so QR code renders cleanly
       const pino = (await import("pino")).default;
