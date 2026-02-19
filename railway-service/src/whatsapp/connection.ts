@@ -42,11 +42,11 @@ export class WhatsAppManager {
     await this.disconnect();
     try {
       // Dynamic import for Baileys (ESM module)
-      const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } =
+      const { default: makeWASocket, DisconnectReason } =
         await import("baileys");
+      const { useSupabaseAuthState } = await import("./supabase-auth-state");
 
-      const authDir = process.env.AUTH_STATE_DIR || "./auth_state";
-      const { state, saveCreds } = await useMultiFileAuthState(authDir);
+      const { state, saveCreds } = await useSupabaseAuthState(this.supabase);
 
       // Silence Baileys internal logs so QR code renders cleanly
       const pino = (await import("pino")).default;
