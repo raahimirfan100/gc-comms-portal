@@ -52,14 +52,17 @@ export async function POST(request: NextRequest) {
 
     const { data: volunteerRow, error: volError } = await supabase
       .from("volunteers")
-      .insert({
-        phone: normalizedPhone,
-        name: name.trim(),
-        email: emailTrimmed,
-        gender,
-        organization: organizationTrimmed,
-        source: "in_app_form" as const,
-      })
+      .upsert(
+        {
+          phone: normalizedPhone,
+          name: name.trim(),
+          email: emailTrimmed,
+          gender,
+          organization: organizationTrimmed,
+          source: "in_app_form" as const,
+        },
+        { onConflict: "phone,name" },
+      )
       .select("id")
       .single();
 
@@ -73,11 +76,14 @@ export async function POST(request: NextRequest) {
     for (const driveId of driveIds) {
       await supabase
         .from("volunteer_availability")
-        .insert({
-          volunteer_id: volunteerRow.id,
-          drive_id: driveId,
-          source: "in_app_form" as const,
-        });
+        .upsert(
+          {
+            volunteer_id: volunteerRow.id,
+            drive_id: driveId,
+            source: "in_app_form" as const,
+          },
+          { onConflict: "volunteer_id,drive_id" },
+        );
     }
 
     const assignments: Array<{ drive: string; duty: string }> = [];
