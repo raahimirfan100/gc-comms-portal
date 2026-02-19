@@ -160,32 +160,29 @@ export default function EditDrivePage() {
 
   const parsedDaigCount = Number(daigCount) || 0;
 
-  // Attach Google Places Autocomplete to the Location Address field (only after form is visible)
+  // Attach Google Places Autocomplete once the library is available
   useEffect(() => {
     if (loadingDrive) return;
     if (!locationAddressRef.current) return;
+    let cancelled = false;
 
-    function initAutocomplete() {
-      if (
-        typeof window === "undefined" ||
-        !(window as any).google ||
-        !(window as any).google.maps ||
-        !(window as any).google.maps.places
-      ) {
-        return false;
+    async function init() {
+      while (!(window as any).google?.maps?.importLibrary) {
+        if (cancelled) return;
+        await new Promise((r) => setTimeout(r, 300));
       }
+      if (cancelled) return;
 
-      const input = locationAddressRef.current;
-      if (!input) return false;
+      await google.maps.importLibrary("places");
+      if (cancelled || !locationAddressRef.current) return;
 
       const bounds = new google.maps.LatLngBounds(
-        // Rough bounding box around Karachi
-        { lat: 24.75, lng: 66.90 }, // SW
-        { lat: 25.10, lng: 67.30 }, // NE
+        { lat: 24.75, lng: 66.90 },
+        { lat: 25.10, lng: 67.30 },
       );
 
       const autocomplete = new google.maps.places.Autocomplete(
-        input as HTMLInputElement,
+        locationAddressRef.current as HTMLInputElement,
         {
           bounds,
           strictBounds: true,
@@ -211,22 +208,10 @@ export default function EditDrivePage() {
           setLocationAddress(formatted);
         }
       });
-
-      return true;
     }
 
-    let done = initAutocomplete();
-    if (done) return;
-
-    const interval = setInterval(() => {
-      if (initAutocomplete()) {
-        clearInterval(interval);
-      }
-    }, 500);
-
-    return () => {
-      clearInterval(interval);
-    };
+    init();
+    return () => { cancelled = true; };
   }, [loadingDrive]);
 
   if (loadingDrive) {

@@ -175,24 +175,25 @@ export default function NewDrivePage() {
 
   const parsedDaigCount = Number(daigCount) || 0;
 
-  // Attach Google Places Autocomplete to the Location Address field
+  // Attach Google Places Autocomplete once the library is available
   useEffect(() => {
     if (!locationAddressRef.current) return;
+    let cancelled = false;
 
-    function initAutocomplete() {
-      if (
-        typeof window === "undefined" ||
-        !(window as any).google ||
-        !(window as any).google.maps ||
-        !(window as any).google.maps.places
-      ) {
-        return false;
+    async function init() {
+      // Wait for the Google Maps core script to appear
+      while (!(window as any).google?.maps?.importLibrary) {
+        if (cancelled) return;
+        await new Promise((r) => setTimeout(r, 300));
       }
+      if (cancelled) return;
+
+      await google.maps.importLibrary("places");
+      if (cancelled || !locationAddressRef.current) return;
 
       const bounds = new google.maps.LatLngBounds(
-        // Rough bounding box around Karachi
-        { lat: 24.75, lng: 66.90 }, // SW
-        { lat: 25.10, lng: 67.30 }, // NE
+        { lat: 24.75, lng: 66.90 },
+        { lat: 25.10, lng: 67.30 },
       );
 
       const autocomplete = new google.maps.places.Autocomplete(
@@ -225,22 +226,10 @@ export default function NewDrivePage() {
           locationAddressRef.current.value = formatted;
         }
       });
-
-      return true;
     }
 
-    let done = initAutocomplete();
-    if (done) return;
-
-    const interval = setInterval(() => {
-      if (initAutocomplete()) {
-        clearInterval(interval);
-      }
-    }, 500);
-
-    return () => {
-      clearInterval(interval);
-    };
+    init();
+    return () => { cancelled = true; };
   }, []);
 
   return (
