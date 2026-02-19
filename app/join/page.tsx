@@ -37,6 +37,7 @@ type Drive = {
   location_address: string | null;
   location_lat: number | null;
   location_lng: number | null;
+  arrival_time: string | null;
   sunset_time: string | null;
   iftaar_time: string | null;
   notes: string | null;
@@ -262,6 +263,9 @@ export default function VolunteerRegisterPage() {
                         <li>Male: NOT allowed to wear Shalwar Kameez (higher risk of pick-pocketing), shorts, or sleeveless shirts</li>
                       </ul>
                     </div>
+                    <p className="font-bold">
+                      NOTE: Volunteers MUST arrive by 5:00 PM.
+                    </p>
                     <p className="font-medium">
                       Fill out the form below to sign up as a volunteer!
                     </p>
@@ -494,14 +498,9 @@ export default function VolunteerRegisterPage() {
                               </div>
 
                               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                {drive.sunset_time && (
+                                {drive.arrival_time && (
                                   <span className="rounded-full bg-muted px-2 py-0.5">
-                                    Sunset: {formatTime(drive.sunset_time)}
-                                  </span>
-                                )}
-                                {drive.iftaar_time && (
-                                  <span className="rounded-full bg-muted px-2 py-0.5">
-                                    Iftaar: {formatTime(drive.iftaar_time)}
+                                    Arrival Time: {formatTime(drive.arrival_time)}
                                   </span>
                                 )}
                               </div>
