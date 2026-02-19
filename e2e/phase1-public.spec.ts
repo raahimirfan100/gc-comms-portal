@@ -8,7 +8,7 @@ test.describe("Phase 1: Public pages", () => {
   });
 
   test("1.2 Volunteer registration page has form fields", async ({ page }) => {
-    await page.goto("/volunteer/register");
+    await page.goto("/join");
     await expect(page.getByText("Grand Citizens")).toBeVisible();
     await expect(page.getByLabel(/full name/i)).toBeVisible();
     await expect(page.getByLabel(/phone/i)).toBeVisible();
@@ -17,7 +17,7 @@ test.describe("Phase 1: Public pages", () => {
   });
 
   test("1.3 Volunteer registration submit when drives exist", async ({ page }) => {
-    await page.goto("/volunteer/register");
+    await page.goto("/join");
     const noDrives = await page.getByText("No upcoming drives available").isVisible();
     if (noDrives) {
       test.skip();
