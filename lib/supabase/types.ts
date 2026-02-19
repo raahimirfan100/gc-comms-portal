@@ -243,6 +243,7 @@ export type Database = {
       }
       drives: {
         Row: {
+          arrival_time: string | null
           created_at: string
           daig_count: number
           drive_date: string
@@ -262,6 +263,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          arrival_time?: string | null
           created_at?: string
           daig_count?: number
           drive_date: string
@@ -281,6 +283,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          arrival_time?: string | null
           created_at?: string
           daig_count?: number
           drive_date?: string

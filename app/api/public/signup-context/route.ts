@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("drives")
       .select(
-        "id, name, drive_date, location_name, location_address, location_lat, location_lng, sunset_time, iftaar_time, notes",
+        "id, name, drive_date, location_name, location_address, location_lat, location_lng, arrival_time, sunset_time, iftaar_time, notes",
       )
       .eq("season_id", season.id)
       .in("status", ["open", "in_progress"])

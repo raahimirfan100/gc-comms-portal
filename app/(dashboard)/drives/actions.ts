@@ -49,6 +49,7 @@ export async function createDrive(formData: FormData) {
     locationLngRaw && locationLngRaw.trim() !== ""
       ? parseFloat(locationLngRaw)
       : null;
+  const arrivalTime = formData.get("arrival_time") as string | null;
   const sunsetTime = formData.get("sunset_time") as string | null;
   const sunsetSource = (formData.get("sunset_source") as string) || "aladhan";
   const status = (formData.get("status") as string) || "draft";
@@ -70,6 +71,7 @@ export async function createDrive(formData: FormData) {
       location_lat: locationLat,
       location_lng: locationLng,
       daig_count: daigCount,
+      arrival_time: arrivalTime || null,
       sunset_time: sunsetTime || null,
       sunset_source: sunsetSource,
       volunteer_target: volunteerTarget,
@@ -175,6 +177,7 @@ export async function updateDrive(id: string, formData: FormData) {
     "location_address",
     "location_lat",
     "location_lng",
+    "arrival_time",
     "sunset_time",
     "sunset_source",
     "iftaar_time",

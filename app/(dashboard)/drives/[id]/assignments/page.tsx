@@ -349,31 +349,51 @@ export default function AssignmentsPage() {
   async function searchExistingVolunteers(query: string) {
     setSearchingVolunteers(true);
 
-    const cleanedQuery = query
-      .trim()
-      .replace(/[%_(),']/g, "");
+    const trimmedQuery = query.trim();
+    const baseSelect = () =>
+      supabase
+        .from("volunteers")
+        .select("id, name, phone, gender, email, organization")
+        .order("updated_at", { ascending: false });
 
-    let volunteersQuery = supabase
-      .from("volunteers")
-      .select("id, name, phone, gender, email, organization")
-      .order("updated_at", { ascending: false })
-      .limit(20);
+    let rows: VolunteerSearchResult[] = [];
+    let errorMessage: string | null = null;
 
-    if (cleanedQuery.length > 0) {
-      volunteersQuery = volunteersQuery.or(
-        `name.ilike.%${cleanedQuery}%,phone.ilike.%${cleanedQuery}%`,
-      );
+    if (trimmedQuery.length === 0) {
+      const { data, error } = await baseSelect().limit(20);
+      if (error) {
+        errorMessage = error.message;
+      } else {
+        rows = (data ?? []) as VolunteerSearchResult[];
+      }
+    } else {
+      const safePattern = `%${trimmedQuery.replace(/[%_]/g, "")}%`;
+      const [nameRes, phoneRes] = await Promise.all([
+        baseSelect().ilike("name", safePattern).limit(20),
+        baseSelect().ilike("phone", safePattern).limit(20),
+      ]);
+
+      if (nameRes.error || phoneRes.error) {
+        errorMessage = nameRes.error?.message ?? phoneRes.error?.message ?? null;
+      } else {
+        const merged = [
+          ...((nameRes.data ?? []) as VolunteerSearchResult[]),
+          ...((phoneRes.data ?? []) as VolunteerSearchResult[]),
+        ];
+        const deduped = merged.filter(
+          (volunteer, index, array) =>
+            array.findIndex((item) => item.id === volunteer.id) === index,
+        );
+        rows = deduped.slice(0, 20);
+      }
     }
-
-    const { data, error } = await volunteersQuery;
     setSearchingVolunteers(false);
 
-    if (error) {
-      toast.error(`Failed to load volunteers: ${error.message}`);
+    if (errorMessage) {
+      toast.error(`Failed to load volunteers: ${errorMessage}`);
       return;
     }
 
-    const rows = (data ?? []) as VolunteerSearchResult[];
     setExistingVolunteerResults(rows);
     if (rows.length > 0 && !rows.some((v) => v.id === selectedVolunteerId)) {
       setSelectedVolunteerId(rows[0].id);
