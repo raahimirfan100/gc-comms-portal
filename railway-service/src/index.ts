@@ -116,18 +116,21 @@ app.post("/api/whatsapp/group/add", authMiddleware, async (req, res) => {
   const { phone, groupJid, name, assignments, welcomeTemplate } = req.body;
   try {
     const { added, status: addStatus } = await whatsapp.addToGroup(phone, groupJid);
+    const skipDm = welcomeTemplate === "__skip_dm__";
 
     if (!added) {
-      // Group add failed — send invite link via DM as fallback
+      // Get invite link regardless
       const code = await whatsapp.getGroupInviteCode(groupJid);
-      if (code) {
-        const link = `https://chat.whatsapp.com/${code}`;
-        const inviteMsg = `Assalamu Alaikum!\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n${link}`;
+      const link = code ? `https://chat.whatsapp.com/${code}` : null;
 
+      if (!skipDm && link) {
+        // Direct call (not from registration) — send invite DM immediately
+        const inviteMsg = `Assalamu Alaikum!\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n${link}`;
         await whatsapp.sendMessage(phone, inviteMsg);
         res.json({ status: "invite_sent", link, addStatus });
       } else {
-        res.json({ status: "failed", error: "Could not add or generate invite", addStatus });
+        // Registration flow — return link for caller to include in welcome DM
+        res.json({ status: "not_added", link, addStatus });
       }
       return;
     }
