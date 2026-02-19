@@ -317,6 +317,11 @@ export default function DriveDetailPage() {
               <p className="mt-1 text-sm font-semibold">
                 {formatDate(drive.drive_date)}
               </p>
+              {drive.arrival_time && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Arrival {formatTime(drive.arrival_time)}
+                </p>
+              )}
               {drive.sunset_time && (
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                   Sunset {formatTime(drive.sunset_time)}
@@ -447,7 +452,7 @@ export default function DriveDetailPage() {
               currentStatus={drive.status}
               onStatusChange={handleStatusChange}
             />
-            {drive.status === "draft" && (
+            {drive.status !== "completed" && drive.status !== "cancelled" && (
               <Link href={`/drives/${id}/edit`}>
                 <Button
                   variant="outline"

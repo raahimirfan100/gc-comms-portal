@@ -46,6 +46,7 @@ export default function EditDrivePage() {
   const [loading, setLoading] = useState(false);
   const [fetchingSunset, setFetchingSunset] = useState(false);
   const [loadingDrive, setLoadingDrive] = useState(true);
+  const [arrivalTime, setArrivalTime] = useState("");
   const [sunsetTime, setSunsetTime] = useState("");
   const [sunsetSource, setSunsetSource] = useState("aladhan");
   const [driveDate, setDriveDate] = useState("");
@@ -78,14 +79,15 @@ export default function EditDrivePage() {
         return;
       }
 
-      if (drive.status !== "draft") {
-        toast.error("Only drives in draft status can be edited");
+      if (drive.status === "completed" || drive.status === "cancelled") {
+        toast.error("Completed or cancelled drives cannot be edited");
         router.push(`/drives/${id}`);
         return;
       }
 
       setDriveName(drive.name || "");
       setDriveDate(drive.drive_date || "");
+      setArrivalTime(drive.arrival_time || "");
       setSunsetTime(drive.sunset_time || "");
       setSunsetSource(drive.sunset_source || "aladhan");
       setDaigCount(String(drive.daig_count || 0));
@@ -144,6 +146,7 @@ export default function EditDrivePage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    formData.set("arrival_time", arrivalTime);
     formData.set("sunset_time", sunsetTime);
     formData.set("sunset_source", sunsetSource);
 
@@ -292,13 +295,26 @@ export default function EditDrivePage() {
                 />
               </FormField>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <FormField label="Date" htmlFor="drive_date" required>
                   <input type="hidden" name="drive_date" value={driveDate} />
                   <DatePicker
                     id="drive_date"
                     value={driveDate}
                     onChange={handleDateChange}
+                  />
+                </FormField>
+                <FormField label="Arrival Time" htmlFor="arrival_time">
+                  <input
+                    type="hidden"
+                    name="arrival_time"
+                    value={arrivalTime}
+                  />
+                  <TimePicker
+                    id="arrival_time"
+                    value={arrivalTime}
+                    onChange={setArrivalTime}
+                    placeholder="Pick arrival time"
                   />
                 </FormField>
                 <FormField

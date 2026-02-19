@@ -82,6 +82,7 @@ export default function NewDrivePage() {
   const [loading, setLoading] = useState(false);
   const [fetchingSunset, setFetchingSunset] = useState(false);
   const [seasonId, setSeasonId] = useState("");
+  const [arrivalTime, setArrivalTime] = useState("");
   const [sunsetTime, setSunsetTime] = useState("");
   const [sunsetSource, setSunsetSource] = useState("aladhan");
   const [driveDate, setDriveDate] = useState("");
@@ -159,6 +160,7 @@ export default function NewDrivePage() {
 
     const formData = new FormData(e.currentTarget);
     formData.set("season_id", seasonId);
+    formData.set("arrival_time", arrivalTime);
     formData.set("sunset_time", sunsetTime);
     formData.set("sunset_source", sunsetSource);
 
@@ -295,13 +297,26 @@ export default function NewDrivePage() {
                 />
               </FormField>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <FormField label="Date" htmlFor="drive_date" required>
                   <input type="hidden" name="drive_date" value={driveDate} />
                   <DatePicker
                     id="drive_date"
                     value={driveDate}
                     onChange={handleDateChange}
+                  />
+                </FormField>
+                <FormField label="Arrival Time" htmlFor="arrival_time">
+                  <input
+                    type="hidden"
+                    name="arrival_time"
+                    value={arrivalTime}
+                  />
+                  <TimePicker
+                    id="arrival_time"
+                    value={arrivalTime}
+                    onChange={setArrivalTime}
+                    placeholder="Pick arrival time"
                   />
                 </FormField>
                 <FormField

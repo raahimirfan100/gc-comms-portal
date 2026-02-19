@@ -66,6 +66,7 @@ create table public.drives (
   location_address text,
   location_lat double precision,
   location_lng double precision,
+  arrival_time time,
   sunset_time time,
   sunset_source text,
   iftaar_time time,
