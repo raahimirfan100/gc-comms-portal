@@ -80,7 +80,7 @@ app.post("/api/whatsapp/disconnect", authMiddleware, async (_req, res) => {
     // Clear auth state so next connect generates a fresh QR
     const fs = await import("fs");
     const path = await import("path");
-    const authDir = path.resolve("./auth_state");
+    const authDir = path.resolve(process.env.AUTH_STATE_DIR || "./auth_state");
     if (fs.existsSync(authDir)) {
       fs.rmSync(authDir, { recursive: true, force: true });
     }
