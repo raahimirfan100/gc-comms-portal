@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CountryCodePicker } from "@/components/ui/country-code-picker";
 import {
   Moon,
   Loader2,
@@ -41,14 +42,6 @@ type Drive = {
   notes: string | null;
 };
 
-const COUNTRY_CODES = [
-  { value: "+92", label: "PK +92" },
-  { value: "+971", label: "AE +971" },
-  { value: "+966", label: "SA +966" },
-  { value: "+91", label: "IN +91" },
-  { value: "+44", label: "UK +44" },
-  { value: "+1", label: "US +1" },
-];
 
 export default function VolunteerRegisterPage() {
   const [phoneConfirmed, setPhoneConfirmed] = useState(false);
@@ -276,18 +269,7 @@ export default function VolunteerRegisterPage() {
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone Number *</Label>
                       <div className="flex gap-2">
-                        <Select value={countryCode} onValueChange={setCountryCode}>
-                          <SelectTrigger className="w-[120px] shrink-0">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {COUNTRY_CODES.map((cc) => (
-                              <SelectItem key={cc.value} value={cc.value}>
-                                {cc.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <CountryCodePicker value={countryCode} onChange={setCountryCode} />
                         <Input
                           id="phone"
                           name="phone"
