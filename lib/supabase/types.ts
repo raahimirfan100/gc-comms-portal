@@ -252,6 +252,7 @@ export type Database = {
           location_name: string | null
           location_lat: number | null
           location_lng: number | null
+          luma_event_id: string | null
           name: string
           notes: string | null
           season_id: string
@@ -271,6 +272,7 @@ export type Database = {
           location_name?: string | null
           location_lat?: number | null
           location_lng?: number | null
+          luma_event_id?: string | null
           name: string
           notes?: string | null
           season_id: string
@@ -290,6 +292,7 @@ export type Database = {
           location_name?: string | null
           location_lat?: number | null
           location_lng?: number | null
+          luma_event_id?: string | null
           name?: string
           notes?: string | null
           season_id?: string
@@ -567,6 +570,7 @@ export type Database = {
           created_at: string
           drive_id: string
           id: string
+          luma_guest_id: string | null
           signed_up_at: string
           source: Database["public"]["Enums"]["volunteer_source"]
           volunteer_id: string
@@ -575,6 +579,7 @@ export type Database = {
           created_at?: string
           drive_id: string
           id?: string
+          luma_guest_id?: string | null
           signed_up_at?: string
           source?: Database["public"]["Enums"]["volunteer_source"]
           volunteer_id: string
@@ -583,6 +588,7 @@ export type Database = {
           created_at?: string
           drive_id?: string
           id?: string
+          luma_guest_id?: string | null
           signed_up_at?: string
           source?: Database["public"]["Enums"]["volunteer_source"]
           volunteer_id?: string
@@ -718,7 +724,7 @@ export type Database = {
       comm_channel: "whatsapp" | "ai_call" | "manual"
       drive_status: "draft" | "open" | "in_progress" | "completed" | "cancelled"
       gender: "male" | "female"
-      volunteer_source: "google_form" | "in_app_form" | "manual" | "bulk_import"
+      volunteer_source: "google_form" | "in_app_form" | "manual" | "bulk_import" | "luma"
     }
     CompositeTypes: {
       [_ in never]: never
