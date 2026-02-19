@@ -62,6 +62,8 @@ import {
   ChevronsUpDown,
   AlertTriangle,
 } from "lucide-react";
+import { CountryCodePicker } from "@/components/ui/country-code-picker";
+import { normalizePhone } from "@/lib/utils";
 import { SkeletonForm } from "@/components/ui/skeleton-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import QRCode from "qrcode";
@@ -141,6 +143,7 @@ export default function WhatsAppSettingsPage() {
 
   // Test message state
   const [testPhone, setTestPhone] = useState("");
+  const [testCountryCode, setTestCountryCode] = useState("+92");
   const [testMessage, setTestMessage] = useState("Hello! This is a test message from GC Comms Portal.");
   const [sendingTest, setSendingTest] = useState(false);
 
@@ -353,7 +356,7 @@ export default function WhatsAppSettingsPage() {
       const res = await fetch("/api/whatsapp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: testPhone, message: testMessage }),
+        body: JSON.stringify({ phone: normalizePhone(testPhone, testCountryCode), message: testMessage }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -921,11 +924,14 @@ export default function WhatsAppSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Phone Number</Label>
-                <Input
-                  placeholder="+923001234567"
-                  value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <CountryCodePicker value={testCountryCode} onChange={setTestCountryCode} />
+                  <Input
+                    placeholder="3XX XXXXXXX"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Message</Label>
