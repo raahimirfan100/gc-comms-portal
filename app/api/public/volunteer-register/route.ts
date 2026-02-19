@@ -76,14 +76,11 @@ export async function POST(request: NextRequest) {
     for (const driveId of driveIds) {
       await supabase
         .from("volunteer_availability")
-        .upsert(
-          {
-            volunteer_id: volunteerRow.id,
-            drive_id: driveId,
-            source: "in_app_form" as const,
-          },
-          { onConflict: "volunteer_id,drive_id" },
-        );
+        .insert({
+          volunteer_id: volunteerRow.id,
+          drive_id: driveId,
+          source: "in_app_form" as const,
+        });
     }
 
     const assignments: Array<{ drive: string; duty: string }> = [];
