@@ -96,7 +96,7 @@ export class GoogleSheetsSync {
               organization: data.organization || null,
               source: "google_form",
             },
-            { onConflict: "phone,name" },
+            { onConflict: "phone" },
           )
           .select("id")
           .single();

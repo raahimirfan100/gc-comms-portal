@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
           organization: organizationTrimmed,
           source: "in_app_form" as const,
         },
-        { onConflict: "phone,name" },
+        { onConflict: "phone" },
       )
       .select("id")
       .single();

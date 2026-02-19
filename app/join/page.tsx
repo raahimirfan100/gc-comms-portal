@@ -42,6 +42,13 @@ type Drive = {
   notes: string | null;
 };
 
+type VolunteerPrefill = {
+  name: string;
+  email: string | null;
+  gender: "male" | "female" | null;
+  organization: string | null;
+};
+
 
 export default function VolunteerRegisterPage() {
   const [phoneConfirmed, setPhoneConfirmed] = useState(false);
@@ -56,10 +63,12 @@ export default function VolunteerRegisterPage() {
   const [gender, setGender] = useState("");
   const [organization, setOrganization] = useState("");
   const [selectedDrives, setSelectedDrives] = useState<string[]>([]);
+  const [alreadySignedDriveIds, setAlreadySignedDriveIds] = useState<string[]>(
+    [],
+  );
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [assignmentInfo, setAssignmentInfo] = useState("");
   const [noDrivesAvailable, setNoDrivesAvailable] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -70,23 +79,39 @@ export default function VolunteerRegisterPage() {
     setPhoneError("");
     setPhoneLoading(true);
     try {
-      const res = await fetch("/api/public/signup-context");
+      const normalizedPhone = normalizePhone(raw, countryCode);
+      const res = await fetch(
+        `/api/public/signup-context?phone=${encodeURIComponent(normalizedPhone)}`,
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load");
 
       const driveList = data.drives ?? [];
+      const signedUpDriveIds = Array.isArray(data.signedUpDriveIds)
+        ? (data.signedUpDriveIds as string[])
+        : [];
+      const volunteerPrefill =
+        data?.volunteerPrefill && typeof data.volunteerPrefill === "object"
+          ? (data.volunteerPrefill as VolunteerPrefill)
+          : null;
       if (driveList.length === 0) {
         setNoDrivesAvailable(true);
         setPhoneError("");
         return;
       }
       setNoDrivesAvailable(false);
-      setPhone(normalizePhone(raw, countryCode));
+      setPhone(normalizedPhone);
       setDrives(driveList);
-      setName("");
-      setEmail("");
-      setGender("");
-      setOrganization("");
+      setAlreadySignedDriveIds(signedUpDriveIds);
+      setName(volunteerPrefill?.name?.trim() || "");
+      setEmail(volunteerPrefill?.email?.trim() || "");
+      setGender(
+        volunteerPrefill?.gender === "male" ||
+          volunteerPrefill?.gender === "female"
+          ? volunteerPrefill.gender
+          : "",
+      );
+      setOrganization(volunteerPrefill?.organization?.trim() || "");
       setSelectedDrives([]);
       setPhoneConfirmed(true);
     } catch (err) {
@@ -102,6 +127,7 @@ export default function VolunteerRegisterPage() {
     setPhoneConfirmed(false);
     setDrives([]);
     setSelectedDrives([]);
+    setAlreadySignedDriveIds([]);
     setAgreed(false);
     setNoDrivesAvailable(false);
   }
@@ -147,16 +173,6 @@ export default function VolunteerRegisterPage() {
       return;
     }
 
-    const data = await res.json();
-
-    if (data.assignments?.length > 0) {
-      setAssignmentInfo(
-        data.assignments
-          .map((a: { drive: string; duty: string }) => `${a.drive}: ${a.duty}`)
-          .join("\n"),
-      );
-    }
-
     setLoading(false);
     setSubmitted(true);
   }
@@ -179,16 +195,14 @@ export default function VolunteerRegisterPage() {
             <p className="text-muted-foreground">
               You have been registered as a volunteer.
             </p>
-            {assignmentInfo && (
-              <div className="mt-4 rounded-md bg-accent p-4 text-left">
-                <p className="mb-2 font-medium">Your Duty Assignments:</p>
-                <pre className="whitespace-pre-wrap text-sm">
-                  {assignmentInfo}
-                </pre>
-              </div>
-            )}
+            <div className="mt-4 rounded-md bg-accent p-4 text-left">
+              <p className="mb-2 font-medium">Next Steps</p>
+              <pre className="whitespace-pre-wrap text-sm">
+                Thanks for signing up! We&apos;ll send your duty details over WhatsApp soon.
+              </pre>
+            </div>
             <p className="text-sm text-muted-foreground">
-              You will receive WhatsApp reminders before each drive.
+              Reminders will be sent before each drive.
             </p>
           </CardContent>
         </Card>
@@ -377,7 +391,11 @@ export default function VolunteerRegisterPage() {
                 </h3>
                 <div className="space-y-3">
                   {drives.map((drive) => {
-                    const isSelected = selectedDrives.includes(drive.id);
+                    const isAlreadySigned = alreadySignedDriveIds.includes(
+                      drive.id,
+                    );
+                    const isSelected =
+                      isAlreadySigned || selectedDrives.includes(drive.id);
 
                     const destination =
                       drive.location_lat != null && drive.location_lng != null
@@ -400,18 +418,22 @@ export default function VolunteerRegisterPage() {
                       <Card
                         key={drive.id}
                         className={cn(
-                          "stagger-item cursor-pointer border-2 transition-colors",
-                          isSelected
+                          "stagger-item border-2 transition-colors",
+                          isAlreadySigned
+                            ? "border-muted/70 bg-muted/10"
+                            : isSelected
                             ? "border-primary bg-primary/5"
-                            : "hover:border-primary/40",
+                            : "cursor-pointer hover:border-primary/40",
                         )}
-                        onClick={() => toggleDrive(drive.id)}
+                        onClick={() => {
+                          if (!isAlreadySigned) toggleDrive(drive.id);
+                        }}
                       >
                         <CardContent className="px-3 py-2 md:px-4 md:py-3">
                           <div className="flex flex-col gap-2 md:flex-row">
                             {staticMapUrl && (
-                              <div className="overflow-hidden rounded-md border bg-muted/30 md:w-1/3">
-                                <div className="relative h-24 w-full md:h-28 group">
+                              <div className="overflow-hidden rounded-md border bg-muted/30 md:w-1/3 md:self-stretch">
+                                <div className="relative h-24 w-full md:h-full md:min-h-28 group">
                                   <img
                                     src={staticMapUrl}
                                     alt={drive.location_name ?? drive.name}
@@ -458,10 +480,15 @@ export default function VolunteerRegisterPage() {
                                 >
                                   <Checkbox
                                     checked={isSelected}
-                                    onCheckedChange={() => toggleDrive(drive.id)}
+                                    disabled={isAlreadySigned}
+                                    onCheckedChange={() => {
+                                      if (!isAlreadySigned) toggleDrive(drive.id);
+                                    }}
                                   />
                                   <span className="text-xs font-medium">
-                                    I&apos;ll attend
+                                    {isAlreadySigned
+                                      ? "Already signed up"
+                                      : "I'll attend"}
                                   </span>
                                 </div>
                               </div>
@@ -492,8 +519,24 @@ export default function VolunteerRegisterPage() {
                                   {drive.notes}
                                 </p>
                               )}
+
                             </div>
                           </div>
+                          {isAlreadySigned && (
+                            <p className="mt-2 border-t border-border/40 pt-2 text-xs text-muted-foreground">
+                              You&apos;re already signed up. Need help?{" "}
+                              <a
+                                href="https://wa.me/923342842585"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="underline underline-offset-2 hover:text-foreground"
+                              >
+                                WhatsApp 0334 2842585
+                              </a>{" "}
+                              (Moosa).
+                            </p>
+                          )}
                         </CardContent>
                       </Card>
                     );

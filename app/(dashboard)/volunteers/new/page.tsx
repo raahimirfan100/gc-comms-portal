@@ -50,7 +50,7 @@ export default function NewVolunteerPage() {
           source: "manual" as const,
           notes: (formData.get("notes") as string) || null,
         },
-        { onConflict: "phone,name" },
+        { onConflict: "phone" },
       );
 
     setLoading(false);

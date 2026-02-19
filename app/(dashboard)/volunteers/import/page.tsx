@@ -147,7 +147,7 @@ export default function BulkImportPage() {
             organization: row.organization || null,
             source: "bulk_import" as const,
           },
-          { onConflict: "phone,name" },
+          { onConflict: "phone" },
         );
 
       if (error) {
