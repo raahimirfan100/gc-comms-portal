@@ -27,7 +27,6 @@ const navigation = [
 
 const settingsNav = [
   { name: "Assignment", href: "/settings/assignment" },
-  { name: "Priority numbers", href: "/settings/priority-numbers" },
   { name: "Sign-up Form", href: "/settings/signup-form" },
   { name: "WhatsApp", href: "/settings/whatsapp" },
   { name: "Google Sheets", href: "/settings/sheets" },
