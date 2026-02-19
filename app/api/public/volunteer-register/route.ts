@@ -151,38 +151,42 @@ async function queueWhatsAppWelcome(
   if (!whatsappConfig?.enabled) return;
   const groupJid = whatsappConfig?.volunteer_group_jid;
 
-  // 1. Try to add to group via Railway (fire-and-forget — group-add needs Baileys)
+  // 1. Try to add to group via Railway — returns invite link if add fails
   const railwayUrl = process.env.RAILWAY_SERVICE_URL;
   const railwaySecret = process.env.RAILWAY_API_SECRET;
+  let groupLink = "";
   if (railwayUrl && railwaySecret && groupJid) {
     try {
-      await fetch(`${railwayUrl}/api/whatsapp/group/add`, {
+      const res = await fetch(`${railwayUrl}/api/whatsapp/group/add`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${railwaySecret}`,
         },
-        // Only add to group — DM handled via scheduled_messages below
         body: JSON.stringify({ phone, groupJid, name, assignments, welcomeTemplate: "__skip_dm__" }),
         signal: AbortSignal.timeout(15000),
       });
+      const data = await res.json().catch(() => ({}));
+      groupLink = data.link || "";
     } catch (err) {
       console.error("[volunteer-register] Group add failed:", err);
     }
   }
 
-  // 2. Queue welcome DM via scheduled_messages — cron picks it up within 60s
+  // 2. Queue single welcome DM (includes invite link if group-add failed)
   const dutyLines = assignments.length > 0
     ? assignments.map((a) => `• ${a.drive}: ${a.duty}`).join("\n")
     : "";
 
   const template = whatsappConfig?.welcome_dm_template || "";
-  const defaultMsg = `Assalamu Alaikum!\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive. You have been added to the volunteer group.`;
+  const defaultMsg = groupLink
+    ? `Assalamu Alaikum!\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n${groupLink}`
+    : `Assalamu Alaikum!\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive. You have been added to the volunteer group.`;
   const message = template
     ? template
         .replace(/{name}/g, name)
         .replace(/{assignments}/g, dutyLines)
-        .replace(/{group_link}/g, "")
+        .replace(/{group_link}/g, groupLink)
     : defaultMsg;
 
   await supabase.from("scheduled_messages").insert({
