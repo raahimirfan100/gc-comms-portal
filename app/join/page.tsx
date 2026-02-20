@@ -370,7 +370,7 @@ export default function VolunteerRegisterPage() {
                       className="w-full"
                       disabled={phoneLoading}
                     >
-                      {phoneLoading && <Spinner />}
+                      {phoneLoading && <Spinner className="mr-2" />}
                       Continue
                     </Button>
                   </form>
