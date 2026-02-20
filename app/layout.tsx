@@ -20,7 +20,6 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Grand Citizens - Iftaar Drive Management",
     description: "Volunteer management system for Grand Citizens Iftaar Drives",
-    url: "/",
     siteName: "Grand Citizens",
     type: "website",
   },
