@@ -77,8 +77,15 @@ export default function NewVolunteerPage() {
               <Input
                 id="phone"
                 name="phone"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="03XX-XXXXXXX"
                 required
+                onInput={(e) => {
+                  const input = e.target as HTMLInputElement;
+                  input.value = input.value.replace(/[^0-9]/g, "");
+                }}
               />
             </FormField>
             <FormField label="Email" htmlFor="email">

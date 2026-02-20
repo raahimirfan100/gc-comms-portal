@@ -487,6 +487,7 @@ export type Database = {
           sent_at: string | null
           status: string
           error: string | null
+          retry_count: number
           created_at: string
         }
         Insert: {
@@ -500,6 +501,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           error?: string | null
+          retry_count?: number
           created_at?: string
         }
         Update: {
@@ -513,6 +515,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           error?: string | null
+          retry_count?: number
           created_at?: string
         }
         Relationships: [
@@ -621,6 +624,7 @@ export type Database = {
           source: Database["public"]["Enums"]["volunteer_source"]
           total_drives_attended: number
           updated_at: string
+          whatsapp_group_status: string | null
           whatsapp_jid: string | null
         }
         Insert: {
@@ -636,6 +640,7 @@ export type Database = {
           source?: Database["public"]["Enums"]["volunteer_source"]
           total_drives_attended?: number
           updated_at?: string
+          whatsapp_group_status?: string | null
           whatsapp_jid?: string | null
         }
         Update: {
@@ -651,6 +656,7 @@ export type Database = {
           source?: Database["public"]["Enums"]["volunteer_source"]
           total_drives_attended?: number
           updated_at?: string
+          whatsapp_group_status?: string | null
           whatsapp_jid?: string | null
         }
         Relationships: []
