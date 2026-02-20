@@ -320,6 +320,8 @@ export function setupCronJobs(
   // Send scheduled WhatsApp messages - every minute
   new CronJob("* * * * *", () => {
     Sentry.withMonitor("scheduled-messages", async () => {
+      if (whatsapp.getStatus() !== "connected") return;
+
       const { data: waConf } = await supabase
         .from("app_config")
         .select("value")
@@ -328,6 +330,8 @@ export function setupCronJobs(
       if (!(waConf?.value as any)?.enabled) return;
 
       const now = new Date().toISOString();
+
+      // Fetch pending messages
       const { data: pending } = await supabase
         .from("scheduled_messages")
         .select("*")
@@ -336,9 +340,21 @@ export function setupCronJobs(
         .order("scheduled_at")
         .limit(20);
 
-      if (!pending || pending.length === 0) return;
+      // Fetch failed messages eligible for retry (max 3 attempts, less than 24h old)
+      const retryAfter = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: retryable } = await supabase
+        .from("scheduled_messages")
+        .select("*")
+        .eq("status", "failed")
+        .lt("retry_count", 3)
+        .gte("created_at", retryAfter)
+        .order("scheduled_at")
+        .limit(10);
 
-      for (const msg of pending) {
+      const messages = [...(pending || []), ...(retryable || [])];
+      if (messages.length === 0) return;
+
+      for (const msg of messages) {
         try {
           if (msg.group_jid) {
             // Send to group
@@ -354,7 +370,7 @@ export function setupCronJobs(
             if (!volunteer?.phone) {
               await supabase
                 .from("scheduled_messages")
-                .update({ status: "failed", error: "Volunteer phone not found" })
+                .update({ status: "failed", error: "Volunteer phone not found", retry_count: 3 })
                 .eq("id", msg.id);
               continue;
             }
@@ -405,10 +421,14 @@ export function setupCronJobs(
             .update({ status: "sent", sent_at: new Date().toISOString() })
             .eq("id", msg.id);
         } catch (error: any) {
-          cronLogger.error({ err: error, messageId: msg.id }, "Failed to send scheduled message");
+          cronLogger.error({ err: error, messageId: msg.id, retryCount: msg.retry_count }, "Failed to send scheduled message");
           await supabase
             .from("scheduled_messages")
-            .update({ status: "failed", error: error.message || "Send failed" })
+            .update({
+              status: "failed",
+              error: error.message || "Send failed",
+              retry_count: (msg.retry_count || 0) + 1,
+            })
             .eq("id", msg.id);
         }
       }
