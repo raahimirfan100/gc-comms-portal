@@ -14,6 +14,18 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Grand Citizens - Iftaar Drive Management",
   description: "Volunteer management system for Grand Citizens Iftaar Drives",
+  openGraph: {
+    title: "Grand Citizens - Iftaar Drive Management",
+    description: "Volunteer management system for Grand Citizens Iftaar Drives",
+    url: "/",
+    siteName: "Grand Citizens",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Grand Citizens - Iftaar Drive Management",
+    description: "Volunteer management system for Grand Citizens Iftaar Drives",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
