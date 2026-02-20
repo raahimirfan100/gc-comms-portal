@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
   const triggeredBy = (auth.claims.email as string) || "admin";
   const posthog = getPostHogClient();
-  posthog.capture({
+  posthog?.capture({
     distinctId: triggeredBy,
     event: "ai_calls_triggered",
     properties: {

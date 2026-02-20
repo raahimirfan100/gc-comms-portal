@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   const results = [...batchResults, ...promotedResults];
 
   const posthog = getPostHogClient();
-  posthog.capture({
+  posthog?.capture({
     distinctId: assignedBy,
     event: "batch_auto_assign_completed",
     properties: {

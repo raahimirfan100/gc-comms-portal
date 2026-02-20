@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     });
 
     const posthog = getPostHogClient();
-    posthog.capture({
+    posthog?.capture({
       distinctId: volunteerRow.id,
       event: "public_volunteer_registered",
       properties: {

@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
     );
 
     const posthog = getPostHogClient();
-    posthog.capture({
+    posthog?.capture({
       distinctId: assignedBy,
       event: "manual_assignment_completed",
       properties: {

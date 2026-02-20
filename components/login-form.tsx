@@ -43,10 +43,7 @@ export function LoginForm({
       posthog.capture("admin_logged_in", { email });
       router.push("/drives");
     } catch (error: unknown) {
-      posthog.capture("admin_login_failed", {
-        email,
-        error: error instanceof Error ? error.message : "An error occurred",
-      });
+      posthog.capture("admin_login_failed", { email });
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setIsLoading(false);
