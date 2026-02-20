@@ -350,10 +350,13 @@ export default function VolunteerRegisterPage() {
                         <Input
                           id="phone"
                           name="phone"
+                          type="tel"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           className="ph-no-capture"
                           placeholder="3XX XXXXXXX"
                           value={phoneInput}
-                          onChange={(e) => setPhoneInput(e.target.value)}
+                          onChange={(e) => setPhoneInput(e.target.value.replace(/[^0-9]/g, ""))}
                           required
                           autoFocus
                         />

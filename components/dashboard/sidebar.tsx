@@ -8,6 +8,7 @@ import {
   Users,
   ClipboardList,
   BarChart3,
+  ScrollText,
   Settings,
   ChevronDown,
   Moon,
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Volunteers", href: "/volunteers", icon: Users },
   { name: "Duties", href: "/duties", icon: ClipboardList },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Activity Log", href: "/logs", icon: ScrollText },
 ];
 
 const settingsNav = [

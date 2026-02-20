@@ -179,6 +179,7 @@ async function queueWhatsAppWelcome(
   const railwayUrl = process.env.RAILWAY_SERVICE_URL;
   const railwaySecret = process.env.RAILWAY_API_SECRET;
   let groupLink = "";
+  let groupStatus: string | null = null;
   if (railwayUrl && railwaySecret && groupJid) {
     try {
       const res = await fetch(`${railwayUrl}/api/whatsapp/group/add`, {
@@ -192,9 +193,24 @@ async function queueWhatsAppWelcome(
       });
       const data = await res.json().catch(() => ({}));
       groupLink = data.link || "";
+
+      if (data.status === "added") {
+        groupStatus = "added";
+      } else if (groupLink) {
+        groupStatus = "invite_sent";
+      } else {
+        groupStatus = "failed";
+      }
     } catch (err) {
       console.error("[volunteer-register] Group add failed:", err);
+      groupStatus = "failed";
     }
+
+    // Persist group-add result
+    await supabase
+      .from("volunteers")
+      .update({ whatsapp_group_status: groupStatus })
+      .eq("id", volunteerId);
   }
 
   // 2. Queue single welcome DM (includes invite link if group-add failed)
