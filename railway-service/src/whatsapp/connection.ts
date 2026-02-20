@@ -5,11 +5,15 @@ import { whatsappLogger } from "../lib/logger";
 // Fixed UUID for the singleton WhatsApp session row
 const SESSION_ID = "00000000-0000-0000-0000-000000000001";
 
+const MAX_RECONNECT_ATTEMPTS = 5;
+const BASE_RECONNECT_DELAY = 5000; // 5s, then 10s, 20s, 40s, 80s
+
 export class WhatsAppManager {
   private supabase: SupabaseClient;
   private sock: any = null;
   private status: string = "disconnected";
   private connecting: boolean = false;
+  private reconnectAttempts: number = 0;
   private processedMessageIds = new Set<string>();
 
   constructor(supabase: SupabaseClient) {
@@ -78,15 +82,46 @@ export class WhatsAppManager {
 
         if (connection === "close") {
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+          const errorMessage = (lastDisconnect?.error as any)?.message || "unknown";
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+          whatsappLogger.warn(
+            { statusCode, errorMessage, attempt: this.reconnectAttempts },
+            "WhatsApp connection closed",
+          );
+
           this.status = "disconnected";
           await this.updateSessionStatus("disconnected");
 
-          if (shouldReconnect) {
-            whatsappLogger.info("Reconnecting WhatsApp...");
-            setTimeout(() => this.connect(), 5000);
+          if (!shouldReconnect) {
+            whatsappLogger.info("Logged out — clearing auth state");
+            const { clearSupabaseAuthState } = await import("./supabase-auth-state");
+            await clearSupabaseAuthState(this.supabase);
+            this.reconnectAttempts = 0;
+            return;
           }
+
+          this.reconnectAttempts++;
+
+          if (this.reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+            whatsappLogger.error(
+              { attempts: this.reconnectAttempts },
+              "Max reconnect attempts reached — clearing auth state. Re-scan QR from admin panel.",
+            );
+            const { clearSupabaseAuthState } = await import("./supabase-auth-state");
+            await clearSupabaseAuthState(this.supabase);
+            this.reconnectAttempts = 0;
+            return;
+          }
+
+          const delay = BASE_RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1);
+          whatsappLogger.info(
+            { delay, attempt: this.reconnectAttempts, maxAttempts: MAX_RECONNECT_ATTEMPTS },
+            "Reconnecting WhatsApp...",
+          );
+          setTimeout(() => this.connect(), delay);
         } else if (connection === "open") {
+          this.reconnectAttempts = 0; // Reset on successful connection
           this.status = "connected";
           const phoneNumber = this.sock?.user?.id?.split(":")[0] || "";
           await this.supabase
