@@ -13,21 +13,23 @@ const defaultUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: {
-    default: "Grand Citizens - Iftaar Drive Management",
+    default: "Grand Citizens | Iftaar Drive Volunteer Management Portal",
     template: "%s | Grand Citizens",
   },
-  description: "Volunteer management system for Grand Citizens Iftaar Drives",
+  description:
+    "Manage volunteers, assign duties, and coordinate Iftaar drives with the Grand Citizens portal. Sign up, get assignments, and stay connected.",
   openGraph: {
-    title: "Grand Citizens - Iftaar Drive Management",
-    description: "Volunteer management system for Grand Citizens Iftaar Drives",
-    url: "/",
+    title: "Grand Citizens | Iftaar Drive Volunteer Management Portal",
+    description:
+      "Manage volunteers, assign duties, and coordinate Iftaar drives with the Grand Citizens portal. Sign up, get assignments, and stay connected.",
     siteName: "Grand Citizens",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Grand Citizens - Iftaar Drive Management",
-    description: "Volunteer management system for Grand Citizens Iftaar Drives",
+    title: "Grand Citizens | Iftaar Drive Volunteer Management Portal",
+    description:
+      "Manage volunteers, assign duties, and coordinate Iftaar drives with the Grand Citizens portal. Sign up, get assignments, and stay connected.",
   },
   appleWebApp: {
     capable: true,
