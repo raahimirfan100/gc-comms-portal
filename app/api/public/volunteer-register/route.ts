@@ -128,6 +128,14 @@ export async function POST(request: NextRequest) {
         drive_count: driveIds.length,
         assignments_count: assignments.length,
         source: "in_app_form",
+        $set: {
+          gender,
+          organization: organizationTrimmed || null,
+          source: "in_app_form",
+        },
+        $set_once: {
+          first_registration_date: new Date().toISOString(),
+        },
       },
     });
 

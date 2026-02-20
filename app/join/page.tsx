@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import posthog from "posthog-js";
 import { cn, normalizePhone, formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,13 @@ export default function VolunteerRegisterPage() {
   const [noDrivesAvailable, setNoDrivesAvailable] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
+  const formStartedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    formStartedAt.current = Date.now();
+    posthog.capture("volunteer_form_viewed");
+  }, []);
+
   async function handlePhoneContinue(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const raw = phoneInput.trim();
@@ -96,6 +104,7 @@ export default function VolunteerRegisterPage() {
           ? (data.volunteerPrefill as VolunteerPrefill)
           : null;
       if (driveList.length === 0) {
+        posthog.capture("volunteer_no_drives_available");
         setNoDrivesAvailable(true);
         setPhoneError("");
         return;
@@ -115,7 +124,18 @@ export default function VolunteerRegisterPage() {
       setOrganization(volunteerPrefill?.organization?.trim() || "");
       setSelectedDrives([]);
       setPhoneConfirmed(true);
+
+      posthog.capture("volunteer_phone_submitted", {
+        drives_available: driveList.length,
+        is_returning: volunteerPrefill !== null,
+      });
+      if (volunteerPrefill !== null) {
+        posthog.capture("volunteer_returning_detected");
+      }
     } catch (err) {
+      posthog.capture("volunteer_phone_failed", {
+        error: err instanceof Error ? err.message : "Unknown error",
+      });
       setPhoneError(
         err instanceof Error ? err.message : "Something went wrong",
       );
@@ -134,16 +154,33 @@ export default function VolunteerRegisterPage() {
   }
 
   function toggleDrive(driveId: string) {
-    setSelectedDrives((prev) =>
-      prev.includes(driveId)
+    setSelectedDrives((prev) => {
+      const next = prev.includes(driveId)
         ? prev.filter((id) => id !== driveId)
-        : [...prev, driveId],
-    );
+        : [...prev, driveId];
+      posthog.capture("volunteer_drives_selected", {
+        drive_id: driveId,
+        selected: !prev.includes(driveId),
+        total_selected: next.length,
+      });
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (selectedDrives.length === 0) return;
+
+    const timeSpent = formStartedAt.current
+      ? Math.round((Date.now() - formStartedAt.current) / 1000)
+      : null;
+    posthog.capture("volunteer_form_submitted", {
+      gender,
+      organization: organization.trim() || null,
+      drives_selected: selectedDrives.length,
+      time_spent_seconds: timeSpent,
+    });
+
     setLoading(true);
     setSubmitError("");
 
@@ -162,6 +199,9 @@ export default function VolunteerRegisterPage() {
         }),
       });
     } catch {
+      posthog.capture("volunteer_registration_failed", {
+        reason: "network_error",
+      });
       setSubmitError("Could not reach the server. Please check your connection and try again.");
       setLoading(false);
       return;
@@ -169,10 +209,29 @@ export default function VolunteerRegisterPage() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      posthog.capture("volunteer_registration_failed", {
+        reason: "api_error",
+        status: res.status,
+        error: data.error || null,
+      });
       setSubmitError(data.error || "Registration failed. Please try again.");
       setLoading(false);
       return;
     }
+
+    const data = await res.json();
+
+    posthog.capture("volunteer_registration_success", {
+      drives_selected: selectedDrives.length,
+      assignments_count: data.assignments?.length ?? 0,
+      time_spent_seconds: timeSpent,
+    });
+
+    posthog.identify(data.volunteerId, {
+      gender,
+      organization: organization.trim() || null,
+      source: "in_app_form",
+    });
 
     setLoading(false);
     setSubmitted(true);
@@ -291,6 +350,7 @@ export default function VolunteerRegisterPage() {
                         <Input
                           id="phone"
                           name="phone"
+                          className="ph-no-capture"
                           placeholder="3XX XXXXXXX"
                           value={phoneInput}
                           onChange={(e) => setPhoneInput(e.target.value)}
@@ -322,7 +382,7 @@ export default function VolunteerRegisterPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Locked Phone Display */}
-              <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
+              <div className="ph-no-capture flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
                 <div className="text-sm">
                   <span className="text-muted-foreground">Phone: </span>
                   <span className="font-medium">{countryCode} {phoneInput}</span>
@@ -347,6 +407,7 @@ export default function VolunteerRegisterPage() {
                     <Label htmlFor="name">Full Name *</Label>
                     <Input
                       id="name"
+                      className="ph-no-capture"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
@@ -357,6 +418,7 @@ export default function VolunteerRegisterPage() {
                     <Input
                       id="email"
                       type="email"
+                      className="ph-no-capture"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
