@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import posthog from "posthog-js";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,6 +172,12 @@ export default function DriveDetailPage() {
     if (result.error) {
       toast.error(result.error);
     } else {
+      posthog.capture("drive_deleted", {
+        drive_id: id,
+        drive_name: drive?.name,
+        drive_status: drive?.status,
+        assignment_count: deleteInfo?.assignmentCount ?? 0,
+      });
       toast.success("Drive deleted");
       router.push("/drives");
     }
