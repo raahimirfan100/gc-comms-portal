@@ -5,6 +5,7 @@ import { normalizePhone } from "@/lib/utils";
 import { autoAssignVolunteer } from "@/lib/assignment/auto-assign";
 import * as Sentry from "@sentry/nextjs";
 import { rateLimit } from "@/lib/rate-limit";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 export async function POST(request: NextRequest) {
   const limited = rateLimit(request, 10, 60_000);
@@ -116,6 +117,18 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.error("[volunteer-register] WhatsApp welcome queue failed:", err);
       }
+    });
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: volunteerRow.id,
+      event: "public_volunteer_registered",
+      properties: {
+        gender,
+        drive_count: driveIds.length,
+        assignments_count: assignments.length,
+        source: "in_app_form",
+      },
     });
 
     return NextResponse.json({

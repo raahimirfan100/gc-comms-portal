@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { normalizePhone } from "@/lib/utils";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +58,11 @@ export default function NewVolunteerPage() {
     if (error) {
       toast.error(error.message);
     } else {
+      posthog.capture("volunteer_added_to_system", {
+        gender: formData.get("gender"),
+        has_organization: !!(formData.get("organization") as string),
+        source: "manual",
+      });
       toast.success("Volunteer added");
       router.push("/volunteers");
     }
