@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createDrive, fetchSunsetTime, getSuggestedVolunteerTarget } from "../actions";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -170,6 +171,13 @@ export default function NewDrivePage() {
     if (result.error) {
       toast.error(result.error);
     } else {
+      posthog.capture("drive_created", {
+        drive_date: formData.get("drive_date"),
+        daig_count: Number(daigCount) || 0,
+        volunteer_target: Number(volunteerCount) || null,
+        status: formData.get("status"),
+        has_location: locationLat !== null && locationLng !== null,
+      });
       toast.success("Drive created successfully!");
       router.push("/drives");
     }

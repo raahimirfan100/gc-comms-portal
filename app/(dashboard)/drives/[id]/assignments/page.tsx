@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
+import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -479,6 +480,11 @@ export default function AssignmentsPage() {
         return;
       }
 
+      posthog.capture("volunteer_manually_added_to_drive", {
+        drive_id: driveId,
+        mode: addVolunteerMode,
+        assignment_status: data?.assignment?.status ?? null,
+      });
       toast.success(data?.message ?? "Volunteer added to drive");
       setAddVolunteerModalOpen(false);
       resetAddVolunteerModal();
@@ -509,6 +515,10 @@ export default function AssignmentsPage() {
         return;
       }
       const count = data.count ?? 0;
+      posthog.capture("auto_assign_triggered", {
+        drive_id: driveId,
+        volunteers_assigned: count,
+      });
       if (count > 0) {
         toast.success(`Assigned ${count} volunteer${count !== 1 ? "s" : ""}`);
       } else {
@@ -676,6 +686,11 @@ export default function AssignmentsPage() {
       if (error) {
         toast.error("Failed to unassign: " + error.message);
       } else {
+        posthog.capture("volunteer_reassigned_via_drag", {
+          drive_id: driveId,
+          from_duty_id: assignment.duty_id,
+          to_duty_id: "unassigned",
+        });
         toast.success("Volunteer moved to unassigned");
         loadData();
       }
@@ -695,6 +710,11 @@ export default function AssignmentsPage() {
     if (error) {
       toast.error("Failed to reassign: " + error.message);
     } else {
+      posthog.capture("volunteer_reassigned_via_drag", {
+        drive_id: driveId,
+        from_duty_id: assignment.duty_id,
+        to_duty_id: targetDutyId,
+      });
       toast.success("Volunteer reassigned");
       loadData();
     }

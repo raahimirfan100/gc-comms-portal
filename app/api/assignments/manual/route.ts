@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { autoAssignVolunteer } from "@/lib/assignment/auto-assign";
 import { normalizePhone } from "@/lib/utils";
 import * as Sentry from "@sentry/nextjs";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 type ExistingVolunteerPayload = {
   driveId?: string;
@@ -184,6 +185,19 @@ export async function POST(request: NextRequest) {
       driveId,
       assignedBy,
     );
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: assignedBy,
+      event: "manual_assignment_completed",
+      properties: {
+        drive_id: driveId,
+        volunteer_id: volunteerId,
+        mode: body.mode,
+        assignment_status: assignment?.status ?? null,
+        duty_name: assignment?.dutyName ?? null,
+      },
+    });
 
     return NextResponse.json({
       volunteerId,
