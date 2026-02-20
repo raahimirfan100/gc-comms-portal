@@ -629,7 +629,7 @@ export default function VolunteerRegisterPage() {
                   className="w-full"
                   disabled={loading || !isFormValid}
                 >
-                  {loading && <Spinner />}
+                  {loading && <Spinner className="mr-2" />}
                   Sign Up as Volunteer
                 </Button>
               </div>
