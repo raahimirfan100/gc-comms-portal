@@ -36,8 +36,10 @@ export interface LumaEvent {
 export interface LumaRegistrationQuestion {
   id: string;
   label: string;
-  type: string;
+  question_type: string;
   required: boolean;
+  options?: string[];
+  terms?: { content_type: string; content_md: string; collect_signature: boolean };
 }
 
 export interface LumaRegistrationAnswer {
@@ -50,14 +52,19 @@ export interface LumaRegistrationAnswer {
 
 export interface LumaGuest {
   id: string;
+  api_id: string;
   user_id: string;
   user_email: string;
   user_name: string | null;
   user_first_name: string | null;
   user_last_name: string | null;
+  name: string | null;
+  email: string;
   approval_status: string;
   phone_number: string | null;
   registered_at: string | null;
+  created_at: string;
+  checked_in_at: string | null;
   registration_answers: LumaRegistrationAnswer[] | null;
 }
 

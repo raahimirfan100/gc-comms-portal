@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/utils";
 import {
@@ -18,10 +19,16 @@ import type {
   LumaRegistrationAnswer,
 } from "@/lib/luma";
 
+function safeTokenCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
 export async function POST(request: NextRequest) {
-  // Verify webhook token
+  // Verify webhook token (timing-safe)
   const token = request.nextUrl.searchParams.get("token");
-  if (!token || token !== process.env.LUMA_WEBHOOK_SECRET) {
+  const secret = process.env.LUMA_WEBHOOK_SECRET;
+  if (!token || !secret || !safeTokenCompare(token, secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -29,11 +36,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const supabase = createAdminClient();
 
-    // Determine event type from payload shape
-    if (body.guest && body.event) {
-      return handleGuestRegistered(supabase, body as LumaWebhookGuestPayload);
-    } else if (body.event && body.hosts) {
-      return handleEventCreatedOrUpdated(supabase, body as LumaWebhookEventPayload);
+    // Luma wraps webhook payloads in { type, data: { ... } }
+    const webhookType = body.type as string | undefined;
+    const data = body.data as Record<string, unknown> | undefined;
+
+    if (webhookType === "guest.registered" && data?.guest) {
+      return handleGuestRegistered(supabase, data as unknown as LumaWebhookGuestPayload);
+    } else if (
+      (webhookType === "event.created" || webhookType === "event.updated") &&
+      data?.event
+    ) {
+      return handleEventCreatedOrUpdated(supabase, data as unknown as LumaWebhookEventPayload);
     }
 
     return NextResponse.json({ error: "Unknown webhook type" }, { status: 400 });
@@ -244,24 +257,9 @@ async function handleGuestRegistered(
   const normalizedPhone = phone ? normalizePhone(phone) : null;
 
   if (!normalizedPhone) {
-    // Can't proceed without phone — still create volunteer but skip WhatsApp
-    const { volunteerId } = await upsertVolunteer(supabase, {
-      phone: guest.user_email, // Use email as fallback identifier
-      name,
-      email,
-      gender,
-      organization,
-      source: "luma",
-    });
-
-    await processRegistration(supabase, {
-      volunteerId,
-      driveIds: [drive.id],
-      source: "luma",
-      lumaGuestId: guest.id,
-    });
-
-    return NextResponse.json({ action: "registered", volunteerId, whatsapp: false });
+    // Can't process without phone — phone is required for volunteer identity
+    console.warn("[luma-webhook] Guest has no phone number, skipping:", guest.id);
+    return NextResponse.json({ action: "skipped", reason: "no_phone", guestId: guest.id });
   }
 
   const { volunteerId } = await upsertVolunteer(supabase, {
