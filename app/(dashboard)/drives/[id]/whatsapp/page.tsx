@@ -47,8 +47,6 @@ import {
   Plus,
   Send,
   XCircle,
-  ChevronDown,
-  History,
 } from "lucide-react";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -411,7 +409,6 @@ function ChatSheet({
   const [composing, setComposing] = useState("");
   const [sending, setSending] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [showOlderMessages, setShowOlderMessages] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -585,108 +582,103 @@ function ChatSheet({
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (() => {
-          const thisDriveMessages = messages.filter((m) => m.drive_id === driveId);
-          const olderMessages = messages.filter((m) => m.drive_id !== driveId);
+          // Build a unified chronological list of messages + reminder badge
+          type TimelineItem =
+            | { type: "message"; msg: CommLog }
+            | { type: "reminder" };
+
+          const timeline: TimelineItem[] = [];
+
+          // Determine where the reminder badge belongs chronologically
+          // If sent, place it at sent_at time; if unsent, place it right before
+          // the first message of this drive (where it will eventually go)
+          const reminderTime = reminder?.sent_at
+            ? new Date(reminder.sent_at).getTime()
+            : null;
+
+          // If reminder is unsent, find the timestamp of the first this-drive message
+          // so we can insert the badge just before it
+          const firstThisDriveMsg = !reminderTime
+            ? messages.find((m) => m.drive_id === driveId)
+            : null;
+          const unsentReminderTime = firstThisDriveMsg
+            ? new Date(firstThisDriveMsg.sent_at || firstThisDriveMsg.created_at).getTime() - 1
+            : null;
+
+          const badgeTime = reminderTime ?? unsentReminderTime;
+          let badgeInserted = false;
+
+          for (const msg of messages) {
+            const msgTime = new Date(msg.sent_at || msg.created_at).getTime();
+
+            // Insert reminder badge at its chronological position
+            if (!badgeInserted && badgeTime != null && msgTime >= badgeTime) {
+              timeline.push({ type: "reminder" });
+              badgeInserted = true;
+            }
+
+            timeline.push({ type: "message", msg });
+          }
+
+          // If badge hasn't been inserted yet (no messages after it, or no messages at all)
+          if (!badgeInserted && (reminder || messages.some((m) => m.drive_id === driveId))) {
+            timeline.push({ type: "reminder" });
+          }
+
+          // Track previous message for date separators
+          let prevMsg: CommLog | null = null;
 
           return (
           <div className="flex-1 overflow-y-auto px-4">
             <div className="space-y-1.5 py-3">
-              {/* Collapsible older messages from other drives */}
-              {olderMessages.length > 0 && (
-                <div>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 py-2 text-[11px] text-muted-foreground/70 transition-colors hover:text-muted-foreground"
-                    onClick={() => setShowOlderMessages((p) => !p)}
-                  >
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="flex items-center gap-1">
-                      <History className="h-3 w-3" />
-                      {olderMessages.length} older message{olderMessages.length !== 1 ? "s" : ""} from other drives
-                      <ChevronDown className={cn("h-3 w-3 transition-transform", showOlderMessages && "rotate-180")} />
-                    </span>
-                    <div className="h-px flex-1 bg-border" />
-                  </button>
-                  {showOlderMessages && (
-                    <div className="space-y-1.5 opacity-90">
-                      {olderMessages.map((msg, i) => {
-                        const isOutbound = msg.direction === "outbound";
-                        const prevMsg = i > 0 ? olderMessages[i - 1] : null;
-                        const showDateSep =
-                          !prevMsg ||
-                          getDateLabel(msg.sent_at || msg.created_at) !==
-                            getDateLabel(prevMsg.sent_at || prevMsg.created_at);
-
-                        return (
-                          <div key={msg.id}>
-                            {showDateSep && (
-                              <div className="flex items-center justify-center py-2">
-                                <span className="rounded-full bg-muted px-3 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                  {getDateLabel(msg.sent_at || msg.created_at)}
-                                </span>
-                              </div>
-                            )}
-                            <div className={cn("flex", isOutbound ? "justify-end" : "justify-start")}>
-                              <div className={cn("max-w-[85%] rounded-lg px-3 py-2 text-sm", isOutbound ? "rounded-br-sm bg-muted text-muted-foreground" : "rounded-bl-sm bg-muted")}>
-                                <p className="whitespace-pre-wrap break-words">{msg.content || "(no content)"}</p>
-                                <div className={cn("mt-1 text-[10px]", isOutbound ? "text-right" : "", "text-muted-foreground/60")}>
-                                  {new Date(msg.sent_at || msg.created_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* This drive divider */}
-              <div className="flex items-center gap-2 py-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide",
-                  reminder?.sent_at
-                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                    : "bg-muted text-muted-foreground",
-                )}>
-                  {reminder?.sent_at ? (
-                    <>
-                      <CheckCircle2 className="h-3 w-3" />
-                      Reminder sent · {new Date(reminder.sent_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
-                    </>
-                  ) : reminder && !reminder.is_sent ? (
-                    <>
-                      <Clock className="h-3 w-3" />
-                      Reminder not sent yet
-                    </>
-                  ) : (
-                    <>
-                      <MessageCircle className="h-3 w-3" />
-                      This drive
-                    </>
-                  )}
-                </span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
-              {/* This drive messages */}
-              {thisDriveMessages.length === 0 ? (
+              {timeline.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-1 py-8 text-muted-foreground">
                   <MessageCircle className="h-8 w-8 opacity-40" />
-                  <p className="text-xs">No messages for this drive yet</p>
+                  <p className="text-xs">No messages yet</p>
                 </div>
               ) : (
-                thisDriveMessages.map((msg, i) => {
+                timeline.map((item, i) => {
+                  if (item.type === "reminder") {
+                    return (
+                      <div key="reminder-badge" className="flex items-center gap-2 py-3">
+                        <div className="h-px flex-1 bg-border" />
+                        <span className={cn(
+                          "flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide",
+                          reminder?.sent_at
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "bg-muted text-muted-foreground",
+                        )}>
+                          {reminder?.sent_at ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3" />
+                              Reminder sent · {new Date(reminder.sent_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
+                            </>
+                          ) : reminder && !reminder.is_sent ? (
+                            <>
+                              <Clock className="h-3 w-3" />
+                              Reminder not sent yet
+                            </>
+                          ) : (
+                            <>
+                              <MessageCircle className="h-3 w-3" />
+                              This drive
+                            </>
+                          )}
+                        </span>
+                        <div className="h-px flex-1 bg-border" />
+                      </div>
+                    );
+                  }
+
+                  const { msg } = item;
+                  const isThisDrive = msg.drive_id === driveId;
                   const isOutbound = msg.direction === "outbound";
-                  const prevMsg = i > 0 ? thisDriveMessages[i - 1] : null;
                   const showDateSep =
                     !prevMsg ||
                     getDateLabel(msg.sent_at || msg.created_at) !==
                       getDateLabel(prevMsg.sent_at || prevMsg.created_at);
 
-                  return (
+                  const el = (
                     <div key={msg.id}>
                       {showDateSep && (
                         <div className="flex items-center justify-center py-2">
@@ -700,7 +692,9 @@ function ChatSheet({
                           className={cn(
                             "max-w-[85%] rounded-lg px-3 py-2 text-sm",
                             isOutbound
-                              ? "rounded-br-sm bg-emerald-600 text-white dark:bg-emerald-700"
+                              ? isThisDrive
+                                ? "rounded-br-sm bg-emerald-600 text-white dark:bg-emerald-700"
+                                : "rounded-br-sm bg-muted text-muted-foreground"
                               : "rounded-bl-sm bg-muted",
                           )}
                         >
@@ -710,9 +704,11 @@ function ChatSheet({
                           <div
                             className={cn(
                               "mt-1 flex items-center gap-1 text-[10px]",
-                              isOutbound
+                              isOutbound && isThisDrive
                                 ? "justify-end text-emerald-200"
-                                : "text-muted-foreground",
+                                : isOutbound
+                                  ? "justify-end text-muted-foreground/60"
+                                  : "text-muted-foreground",
                             )}
                           >
                             <span>
@@ -734,6 +730,9 @@ function ChatSheet({
                       </div>
                     </div>
                   );
+
+                  prevMsg = msg;
+                  return el;
                 })
               )}
               <div ref={bottomRef} />
