@@ -83,32 +83,11 @@ type DriveInfo = {
 // ─── Delivery Status Badge ───────────────────────────────────────────────────
 
 function DeliveryStatusBadge({
-  logs,
   reminder,
 }: {
-  logs: CommLog[];
   reminder: Tables<"reminder_schedules"> | null;
 }) {
-  const outboundLog = logs.findLast((l) => l.direction === "outbound");
-
-  if (outboundLog?.error) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge
-            variant="outline"
-            className="gap-1 border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
-          >
-            <AlertCircle className="h-3 w-3" />
-            Failed
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>{outboundLog.error}</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  if (outboundLog) {
+  if (reminder?.is_sent) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -121,13 +100,9 @@ function DeliveryStatusBadge({
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          Sent at{" "}
-          {outboundLog.sent_at
-            ? new Date(outboundLog.sent_at).toLocaleTimeString("en-PK", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "unknown"}
+          Reminder sent
+          {reminder.sent_at &&
+            ` at ${new Date(reminder.sent_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}`}
         </TooltipContent>
       </Tooltip>
     );
@@ -907,22 +882,12 @@ export default function WhatsAppPage() {
     return commLogs.filter((l) => l.volunteer_id === volunteerId);
   }
 
-  const stats = assignments.reduce(
-    (acc, a) => {
-      if (a.status === "cancelled") return acc;
-      const logs = getVolunteerLogs(a.volunteer_id);
-      const outbound = logs.findLast((l) => l.direction === "outbound");
-      if (outbound?.error) {
-        acc.failed++;
-      } else if (outbound) {
-        acc.sent++;
-      } else if (reminder && !reminder.is_sent) {
-        acc.pending++;
-      }
-      return acc;
-    },
-    { sent: 0, pending: 0, failed: 0 },
-  );
+  const activeCount = assignments.filter((a) => a.status !== "cancelled").length;
+  const stats = {
+    sent: reminder?.is_sent ? activeCount : 0,
+    pending: reminder && !reminder.is_sent ? activeCount : 0,
+    failed: 0,
+  };
 
   function interpolateTemplate(
     tpl: string,
@@ -1118,7 +1083,6 @@ export default function WhatsAppPage() {
                           </Badge>
                         ) : (
                           <DeliveryStatusBadge
-                            logs={logs}
                             reminder={reminder}
                           />
                         )}
