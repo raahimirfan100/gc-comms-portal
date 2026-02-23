@@ -47,6 +47,7 @@ import {
   Plus,
   Send,
   XCircle,
+  Users,
 } from "lucide-react";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -57,7 +58,7 @@ type Assignment = {
   volunteer_id: string;
   duty_id: string;
   status: string;
-  volunteers: { id: string; name: string; phone: string } | null;
+  volunteers: { id: string; name: string; phone: string; whatsapp_group_status: string | null } | null;
   duties: { name: string } | null;
 };
 
@@ -135,6 +136,91 @@ function DeliveryStatusBadge({
       <Minus className="h-3 w-3" />
       No reminder
     </Badge>
+  );
+}
+
+// ─── Signup Status Badge ────────────────────────────────────────────────────
+
+function SignupStatusBadge({
+  groupStatus,
+  welcomeStatus,
+}: {
+  groupStatus: string | null;
+  welcomeStatus: { status: string; error: string | null } | undefined;
+}) {
+  const groupLabel =
+    groupStatus === "added" ? "In group" :
+    groupStatus === "invite_sent" ? "Invite sent" :
+    groupStatus === "failed" ? "Group failed" :
+    null;
+
+  const groupColor =
+    groupStatus === "added"
+      ? "text-emerald-700 dark:text-emerald-300"
+      : groupStatus === "invite_sent"
+        ? "text-amber-700 dark:text-amber-300"
+        : groupStatus === "failed"
+          ? "text-red-700 dark:text-red-300"
+          : "text-muted-foreground";
+
+  const GroupIcon =
+    groupStatus === "added" ? Users :
+    groupStatus === "invite_sent" ? Users :
+    groupStatus === "failed" ? AlertCircle :
+    Minus;
+
+  const dmLabel =
+    welcomeStatus?.status === "sent" ? "DM sent" :
+    welcomeStatus?.status === "pending" ? "DM pending" :
+    welcomeStatus?.status === "failed" ? "DM failed" :
+    null;
+
+  const dmColor =
+    welcomeStatus?.status === "sent"
+      ? "text-emerald-700 dark:text-emerald-300"
+      : welcomeStatus?.status === "pending"
+        ? "text-amber-700 dark:text-amber-300"
+        : welcomeStatus?.status === "failed"
+          ? "text-red-700 dark:text-red-300"
+          : "";
+
+  const DmIcon =
+    welcomeStatus?.status === "sent" ? CheckCircle2 :
+    welcomeStatus?.status === "pending" ? Clock :
+    welcomeStatus?.status === "failed" ? AlertCircle :
+    null;
+
+  if (!groupLabel && !dmLabel) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      {groupLabel && (
+        <span className={cn("flex items-center gap-1 text-xs", groupColor)}>
+          <GroupIcon className="h-3 w-3" />
+          {groupLabel}
+        </span>
+      )}
+      {dmLabel && DmIcon && (
+        welcomeStatus?.status === "failed" && welcomeStatus.error ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn("flex items-center gap-1 text-xs", dmColor)}>
+                <DmIcon className="h-3 w-3" />
+                {dmLabel}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{welcomeStatus.error}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className={cn("flex items-center gap-1 text-xs", dmColor)}>
+            <DmIcon className="h-3 w-3" />
+            {dmLabel}
+          </span>
+        )
+      )}
+    </div>
   );
 }
 
@@ -796,6 +882,7 @@ export default function WhatsAppPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [commLogs, setCommLogs] = useState<CommLog[]>([]);
   const [driveInfo, setDriveInfo] = useState<DriveInfo | null>(null);
+  const [welcomeMap, setWelcomeMap] = useState<Record<string, { status: string; error: string | null }>>({});
 
   const [selectedVolunteer, setSelectedVolunteer] = useState<{
     id: string;
@@ -818,7 +905,7 @@ export default function WhatsAppPage() {
         supabase
           .from("assignments")
           .select(
-            "id, volunteer_id, duty_id, status, volunteers(id, name, phone), duties(name)",
+            "id, volunteer_id, duty_id, status, volunteers(id, name, phone, whatsapp_group_status), duties(name)",
           )
           .eq("drive_id", driveId)
           .neq("status", "waitlisted")
@@ -842,9 +929,33 @@ export default function WhatsAppPage() {
       if (driveRes.error) throw driveRes.error;
 
       setReminder(reminderRes.data?.[0] ?? null);
-      setAssignments(assignRes.data as unknown as Assignment[]);
+      const assignData = assignRes.data as unknown as Assignment[];
+      setAssignments(assignData);
       setCommLogs(commRes.data as CommLog[]);
       setDriveInfo(driveRes.data as DriveInfo);
+
+      // Fetch welcome message status for these volunteers
+      const volIds = [...new Set(assignData.map((a) => a.volunteer_id))];
+      if (volIds.length > 0) {
+        const { data: welcomeRows } = await supabase
+          .from("scheduled_messages")
+          .select("volunteer_id, status, error")
+          .in("volunteer_id", volIds)
+          .is("drive_id", null)
+          .eq("channel", "whatsapp")
+          .order("created_at");
+        // Build map — last entry per volunteer wins (most recent status)
+        const map: Record<string, { status: string; error: string | null }> = {};
+        for (const row of welcomeRows ?? []) {
+          if (row.volunteer_id) {
+            map[row.volunteer_id] = { status: row.status, error: row.error };
+          }
+        }
+        setWelcomeMap(map);
+      } else {
+        setWelcomeMap({});
+      }
+
       setError(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load data");
@@ -1030,7 +1141,8 @@ export default function WhatsAppPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Duty</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Signup</TableHead>
+                  <TableHead>Reminder</TableHead>
                   <TableHead className="hidden sm:table-cell">
                     Message
                   </TableHead>
@@ -1070,6 +1182,12 @@ export default function WhatsAppPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {a.duties?.name ?? "—"}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <SignupStatusBadge
+                          groupStatus={a.volunteers?.whatsapp_group_status ?? null}
+                          welcomeStatus={welcomeMap[a.volunteer_id]}
+                        />
                       </TableCell>
                       <TableCell>
                         {a.status === "cancelled" ? (
