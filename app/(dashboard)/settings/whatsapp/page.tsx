@@ -740,7 +740,7 @@ export default function WhatsAppSettingsPage() {
             <CardHeader>
               <CardTitle>Welcome Message</CardTitle>
               <CardDescription>
-                Sent as a DM to new volunteers after they sign up, along with a link to join the group
+                Sent as a DM to new volunteers after they sign up. If they can&apos;t be added to the group automatically, the invite link is sent as a separate follow-up message.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -748,13 +748,14 @@ export default function WhatsAppSettingsPage() {
                 <Label>Message Template</Label>
                 <Textarea
                   rows={5}
-                  value={config.welcome_dm_template || "Assalamu Alaikum! 🌙\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\nPlease join our volunteer group:\n{group_link}"}
+                  value={config.welcome_dm_template || ""}
+                  placeholder={"Assalamu Alaikum {name}!\n\nJazakAllah Khair for signing up as a volunteer for Grand Citizens Iftaar Drive.\n\n{assignments}"}
                   onChange={(e) =>
                     setConfig({ ...config, welcome_dm_template: e.target.value })
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Variables: {"{name}"}, {"{assignments}"}, {"{group_link}"}
+                  Variables: {"{name}"}, {"{assignments}"}
                 </p>
               </div>
             </CardContent>
