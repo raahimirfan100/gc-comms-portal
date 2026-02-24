@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    console.log("[luma-webhook] raw payload:", JSON.stringify(body));
     const supabase = createAdminClient();
 
     // Luma wraps webhook payloads in { type, data: { ... } }
