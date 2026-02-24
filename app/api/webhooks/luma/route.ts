@@ -204,6 +204,8 @@ async function handleEventCreatedOrUpdated(
 
   if (driveError?.code === "23505") {
     // Concurrent webhook delivery may have inserted the same luma_event_id.
+    // Retry finding the drive with a short delay to allow the other transaction to complete.
+    await new Promise(resolve => setTimeout(resolve, 100));
     const existing = await findDriveByLumaEvent(supabase, lumaEvent.id);
     if (existing) {
       await supabase
@@ -221,6 +223,8 @@ async function handleEventCreatedOrUpdated(
         .eq("id", existing.id);
       return NextResponse.json({ action: "updated", driveId: existing.id });
     }
+    // If still not found after retry, let the error handler below deal with it
+  }
   }
 
   if (driveError || !drive) {
