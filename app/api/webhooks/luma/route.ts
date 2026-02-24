@@ -300,20 +300,19 @@ async function handleGuestRegistered(
       .single();
 
     if (driveError?.code === "23505") {
+      // Retry finding the drive with a short delay to allow the other transaction to complete.
+      await new Promise(resolve => setTimeout(resolve, 100));
       const existing = await findDriveByLumaEvent(supabase, lumaEvent.id);
       if (existing) {
         drive = existing;
+      } else {
+        // If still not found after retry, return error
+        return NextResponse.json(
+          { error: "Failed to resolve concurrent drive insertion" },
+          { status: 500 },
+        );
       }
     } else if (driveError || !newDrive) {
-      return NextResponse.json(
-        { error: driveError?.message || "Failed to create drive" },
-        { status: 500 },
-      );
-    } else {
-      await createDriveDuties(supabase, newDrive.id, defaultDaigCount);
-      await createDefaultReminders(supabase, newDrive.id, driveDate, sunsetTime);
-      drive = newDrive;
-    }
   }
 
   if (!drive) {
