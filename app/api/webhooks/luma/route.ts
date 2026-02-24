@@ -313,6 +313,15 @@ async function handleGuestRegistered(
         );
       }
     } else if (driveError || !newDrive) {
+      return NextResponse.json(
+        { error: driveError?.message || "Failed to create drive" },
+        { status: 500 },
+      );
+    } else {
+      await createDriveDuties(supabase, newDrive.id, defaultDaigCount);
+      await createDefaultReminders(supabase, newDrive.id, driveDate, sunsetTime);
+      drive = newDrive;
+    }
   }
 
   if (!drive) {
