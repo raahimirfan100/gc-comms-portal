@@ -31,10 +31,13 @@ export async function sendWhatsAppMessage(
     }),
   });
 
+  const responseBody = await res.json().catch(() => res.text());
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`WhatsApp Cloud API error ${res.status}: ${err}`);
+    throw new Error(`WhatsApp Cloud API error ${res.status}: ${JSON.stringify(responseBody)}`);
   }
+
+  // Temporary debug log — remove after confirming delivery works
+  console.log("[WhatsApp] send response:", JSON.stringify(responseBody));
 }
 
 export interface CloudIncomingMessage {
